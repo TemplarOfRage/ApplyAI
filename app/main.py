@@ -7,6 +7,32 @@ from app.services.auth import check_authentication, logout
 from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
 from app.services.analysis import save_analysis, get_user_analysis_history
 from app.config import init_streamlit_config, get_api_key
+import requests
+from bs4 import BeautifulSoup
+
+def extract_text_from_url(url):
+    """Extract text content from a URL"""
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text content
+        text = soup.get_text()
+        
+        # Clean up whitespace
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return text
+    except Exception as e:
+        st.error(f"Error extracting text from URL: {str(e)}")
+        return None
 
 def run():
     """Main application entry point"""
@@ -21,6 +47,37 @@ def run():
     
     # Add logout button to sidebar
     with st.sidebar:
+        st.title("⚙️ Configuration")
+        
+        # Claude API Configuration
+        st.subheader("Analysis Settings")
+        
+        system_prompt = st.text_area(
+            "System Prompt",
+            value="""You are an expert job application analyst. Your task is to analyze job postings and provide insights about the requirements and how to best position oneself for the role.""",
+            help="This sets the context for Claude's analysis"
+        )
+        
+        analysis_prompt = st.text_area(
+            "Analysis Prompt",
+            value="""Please analyze this job posting and provide:
+1. Key technical skills required
+2. Soft skills emphasized
+3. Experience level needed
+4. Main responsibilities
+5. Unique requirements or preferences
+6. Tips for application success""",
+            help="This is the specific request sent to Claude"
+        )
+        
+        temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7,
+            help="Higher values make output more creative but less focused"
+        )
+        
         if st.button("🚪 Logout", type="primary"):
             logout()
             st.rerun()
@@ -30,20 +87,65 @@ def run():
     
     with col1:
         st.subheader("📝 Job Posting Analysis")
+        
+        # Add URL input option
+        url_input = st.text_input(
+            "Job Posting URL",
+            placeholder="Paste a job posting URL here (optional)"
+        )
+        
+        # Text area for job posting
         job_post = st.text_area(
-            "Paste a job posting here",
+            "Or paste job posting text",
             height=300,
             placeholder="Paste the job description here to analyze it..."
         )
         
+        # Handle URL input
+        if url_input:
+            with st.spinner("Extracting content from URL..."):
+                url_content = extract_text_from_url(url_input)
+                if url_content:
+                    job_post = url_content
+                    st.success("Content extracted from URL!")
+        
         if st.button("Analyze", type="primary"):
             if not job_post:
-                st.error("Please paste a job posting to analyze")
+                st.error("Please provide a job posting (either via URL or text)")
                 return
                 
             with st.spinner("Analyzing job posting..."):
-                # Your analysis logic here
-                st.success("Analysis complete!")
+                try:
+                    client = anthropic.Anthropic(api_key=get_api_key())
+                    
+                    # Combine prompts for analysis
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": f"{analysis_prompt}\n\nJob Posting:\n{job_post}"
+                        }
+                    ]
+                    
+                    response = client.messages.create(
+                        model="claude-3-sonnet-20240229",
+                        max_tokens=2000,
+                        temperature=temperature,
+                        messages=messages
+                    )
+                    
+                    analysis = response.content[0].text
+                    st.success("Analysis complete!")
+                    st.markdown(analysis)
+                    
+                    # Save analysis to history
+                    save_analysis(st.session_state.user_id, job_post, analysis)
+                    
+                except Exception as e:
+                    st.error(f"Error during analysis: {str(e)}")
                 
     with col2:
         st.subheader("📄 Your Resumes")
@@ -51,6 +153,16 @@ def run():
         
         if uploaded_file:
             try:
+                # Validate file size
+                if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
+                    st.error("File size too large. Please upload a file smaller than 5MB.")
+                    return
+                
+                # Validate file type
+                if uploaded_file.type not in ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']:
+                    st.error("Invalid file type. Please upload a PDF, DOCX, or TXT file.")
+                    return
+                
                 content = extract_text_from_file(uploaded_file)
                 if content:
                     if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
