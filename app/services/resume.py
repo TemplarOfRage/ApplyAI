@@ -63,19 +63,18 @@ def init_resume_db():
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        # Check if table exists
-        c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='resumes' ''')
+        # Drop the existing table to fix schema issues
+        c.execute('DROP TABLE IF EXISTS resumes')
         
-        # If table doesn't exist, create it
-        if c.fetchone()[0] == 0:
-            c.execute('''CREATE TABLE resumes
-                        (user_id TEXT,
-                         filename TEXT,
-                         content TEXT,
-                         file_type TEXT,
-                         timestamp TEXT,
-                         PRIMARY KEY (user_id, filename))''')
-            conn.commit()
+        # Create table with correct schema
+        c.execute('''CREATE TABLE resumes
+                    (user_id TEXT,
+                     filename TEXT,
+                     content TEXT,
+                     file_type TEXT,
+                     timestamp TEXT,
+                     PRIMARY KEY (user_id, filename))''')
+        conn.commit()
             
     except Exception as e:
         st.error(f"Database initialization error: {str(e)}")
@@ -85,20 +84,28 @@ def init_resume_db():
 def save_resume(user_id, filename, content, file_type):
     """Save resume to database"""
     try:
-        # Ensure database is initialized
+        # Ensure database is initialized with correct schema
         init_resume_db()
         
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
+        # Get table info to verify schema
+        c.execute('PRAGMA table_info(resumes)')
+        columns = [col[1] for col in c.fetchall()]
+        print(f"Table columns: {columns}")  # Debug info
+        
         # Insert or replace resume
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute('INSERT OR REPLACE INTO resumes VALUES (?, ?, ?, ?, ?)',
+        c.execute('''INSERT OR REPLACE INTO resumes 
+                    (user_id, filename, content, file_type, timestamp) 
+                    VALUES (?, ?, ?, ?, ?)''',
                  (user_id, filename, content, file_type, timestamp))
         
         conn.commit()
         return True
     except Exception as e:
+        print(f"Error details: {str(e)}")  # Debug info
         st.error(f"Error saving resume: {str(e)}")
         return False
     finally:
