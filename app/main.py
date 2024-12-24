@@ -5,8 +5,13 @@ Main Streamlit application entry point for Job Buddy.
 
 import streamlit as st
 import anthropic
+import sys
+import os
 
-# Use absolute import
+# Add the parent directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+
+# Absolute import for Streamlit Cloud
 from app.config import init_streamlit_config, get_api_key, get_credentials, get_database_url
 
 def main():
@@ -24,7 +29,7 @@ def main():
     # Debug information (remove in production)
     st.write("API Key Present:", bool(api_key))
     st.write("Database URL:", db_url)
-    st.write("Credentials Present:", bool(credentials))
+    st.write("Credentials Configured:", bool(credentials))
     
     # Set up page navigation
     page = st.sidebar.radio("Navigate", 
@@ -105,10 +110,6 @@ def job_analysis_page(api_key):
         except Exception as e:
             st.error(f"Error initializing Anthropic client: {e}")
 
-# Application entry point
-def run():
-    main()
-
-# This allows the script to be run directly
+# This is the entry point for Streamlit
 if __name__ == "__main__":
-    run()
+    main()
