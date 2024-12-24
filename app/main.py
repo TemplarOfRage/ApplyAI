@@ -6,6 +6,9 @@ import streamlit as st
 import anthropic
 import sys
 import os
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -55,6 +58,45 @@ def extract_section(text, section_header):
             section_content = section.split('\n', 1)[1] if '\n' in section else ''
             return section_content.strip()
     return None
+
+def extract_job_posting_from_url(url):
+    """
+    Attempts to extract job posting content from a given URL.
+    Returns tuple of (success, content/error_message)
+    """
+    try:
+        # Validate URL
+        parsed = urlparse(url)
+        if not all([parsed.scheme, parsed.netloc]):
+            return False, "Please enter a valid URL"
+            
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+            
+        # Get text content
+        text = soup.get_text()
+        
+        # Clean up the text
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return True, text
+        
+    except requests.RequestException as e:
+        return False, f"Error fetching URL: {str(e)}"
+    except Exception as e:
+        return False, f"Error processing content: {str(e)}"
 
 def main():
     # Initialize Streamlit configuration
@@ -146,7 +188,25 @@ def main():
 
     with col1:
         st.header("🎯 Job Posting Analysis")
-        job_post = st.text_area("Paste the job posting here", height=200)
+        
+        # Add tab selection for input method
+        tab1, tab2 = st.tabs(["📋 Paste Job Posting", "🔗 Job Posting URL"])
+        
+        with tab1:
+            job_post = st.text_area("Paste the job posting here", height=200)
+            
+        with tab2:
+            job_url = st.text_input("Enter job posting URL")
+            if job_url:
+                success, content = extract_job_posting_from_url(job_url)
+                if success:
+                    job_post = content
+                    st.success("Successfully extracted job posting!")
+                    st.text_area("Extracted Content (Review and Edit if needed)", value=job_post, height=200)
+                else:
+                    st.error(content)
+                    job_post = ""
+
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
         # Get user resumes before the button
