@@ -210,11 +210,13 @@ def main():
                 st.session_state.extraction_attempted = True
                 st.session_state.previous_url = job_url
                 
-                if success:
+                # Validate that we actually got meaningful content
+                if success and content and len(content.strip()) > 100:  # Minimum content length
                     st.session_state.job_post_content = content
                     st.success("✅ Content extracted successfully! Please review and edit if needed.")
                 else:
-                    st.error(content)
+                    error_msg = content if not success else "Extraction produced insufficient content."
+                    st.error(f"Unable to extract job posting content: {error_msg}")
                     st.info("💡 Tip: Try copying the job description directly from the website and pasting it below.")
         
         # Job posting content area
