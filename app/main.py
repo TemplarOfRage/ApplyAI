@@ -193,40 +193,31 @@ def main():
         if 'job_post_content' not in st.session_state:
             st.session_state.job_post_content = ""
         
-        # Add radio selection for input method
-        input_method = st.radio(
-            "Choose input method",
-            ["📋 Paste Job Posting", "🔗 Enter Job URL"],
-            horizontal=True,
-            key="input_method"
+        # URL Input with experimental label
+        job_url = st.text_input(
+            "Job URL (Experimental)",
+            help="Automatic content extraction may not work for all job sites"
         )
         
-        job_post = ""
+        if job_url:
+            with st.spinner("Extracting job posting content..."):
+                success, content = extract_job_posting_from_url(job_url)
+                if success:
+                    st.session_state.job_post_content = content
+                    st.success("✅ Content extracted successfully")
+                else:
+                    st.error(content)
         
-        if input_method == "📋 Paste Job Posting":
-            job_post = st.text_area("Paste the job posting here", height=200)
-            st.session_state.job_post_content = job_post
-        else:  # URL input option
-            job_url = st.text_input("Enter job posting URL")
-            if job_url:
-                with st.spinner("Extracting job posting content..."):
-                    success, content = extract_job_posting_from_url(job_url)
-                    if success:
-                        st.session_state.job_post_content = content
-                        st.success("✅ Successfully extracted job posting!")
-                    else:
-                        st.error(content)
-                        st.session_state.job_post_content = ""
-            
-            # Always show the content if it exists in session state
-            if st.session_state.job_post_content:
-                st.text_area(
-                    "Extracted job posting content",
-                    value=st.session_state.job_post_content,
-                    height=200,
-                    disabled=True
-                )
-                job_post = st.session_state.job_post_content
+        # Job posting content area
+        job_post = st.text_area(
+            "Job Posting Content",
+            value=st.session_state.job_post_content,
+            placeholder="Enter job posting content here. If you provided a URL above, the content will appear here automatically.",
+            height=200
+        )
+        
+        # Update session state with whatever is in the text area
+        st.session_state.job_post_content = job_post
 
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
