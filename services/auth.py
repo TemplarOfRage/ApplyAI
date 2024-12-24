@@ -1,16 +1,19 @@
 import streamlit as st
 from datetime import datetime, timedelta
-import jwt  # You'll need to add PyJWT to requirements.txt
+import jwt
+import json
 
-# Add this to your imports and requirements.txt
-from streamlit_cookies_manager import CookieManager
+# This should be moved to environment variables in production
+SECRET_KEY = "your-secret-key"
 
-# Secret key for JWT - in production, this should be in environment variables
-SECRET_KEY = "your-secret-key"  # TODO: Move to environment variables
+@st.cache_data(show_spinner=False)
+def get_stored_credentials():
+    """Cache the credentials to persist across reruns"""
+    return {}
 
 def create_auth_token(user_id):
     """Create a JWT token for the user"""
-    expiration = datetime.utcnow() + timedelta(days=7)  # Token expires in 7 days
+    expiration = datetime.utcnow() + timedelta(days=7)
     token = jwt.encode(
         {
             'user_id': user_id,
@@ -30,17 +33,17 @@ def verify_auth_token(token):
         return None
 
 def check_authentication():
-    """Enhanced authentication check with persistent login"""
-    # Initialize cookie manager
-    cookies = CookieManager()
-    
-    # If already authenticated in session state, return True
+    """Enhanced authentication check with session persistence"""
+    # Check if user is already authenticated in session state
     if 'user_id' in st.session_state:
         return True
-        
-    # Check for auth token in cookies
-    if cookies.get('auth_token'):
-        user_id = verify_auth_token(cookies.get('auth_token'))
+    
+    # Check for stored credentials
+    stored_creds = get_stored_credentials()
+    
+    # If we have stored credentials, verify and use them
+    if 'auth_token' in stored_creds:
+        user_id = verify_auth_token(stored_creds['auth_token'])
         if user_id:
             st.session_state.user_id = user_id
             return True
@@ -57,16 +60,28 @@ def check_authentication():
             # Set session state
             st.session_state.user_id = user_id
             
-            # Create and set auth token in cookies
+            # Create auth token and store it
             token = create_auth_token(user_id)
-            cookies.set('auth_token', token)
+            stored_creds = get_stored_credentials()
+            stored_creds['auth_token'] = token
             
-            # Save cookies
-            cookies.save()
+            # Force cache update
+            get_stored_credentials.clear()
             
             return True
         else:
             st.error("Invalid username or password")
             return False
             
-    return False 
+    return False
+
+def logout():
+    """Handle logout"""
+    if 'user_id' in st.session_state:
+        del st.session_state.user_id
+    
+    # Clear stored credentials
+    stored_creds = get_stored_credentials()
+    if 'auth_token' in stored_creds:
+        del stored_creds['auth_token']
+    get_stored_credentials.clear() 

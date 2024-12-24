@@ -24,4 +24,3 @@ pytest>=7.3.0
 beautifulsoup4==4.12.3
 requests==2.31.0
 PyJWT==2.8.0
-streamlit-cookies-manager==0.2.0
