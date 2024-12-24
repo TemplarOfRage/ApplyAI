@@ -60,15 +60,37 @@ def analyze_job_posting(job_post, system_prompt, analysis_prompt, temperature=0.
     except Exception as e:
         raise Exception(f"Analysis failed: {str(e)}")
 
-def save_analysis(user_id, job_post, analysis):
-    """Save analysis to database"""
+def init_analysis_db():
+    """Initialize or migrate analysis database"""
     try:
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        # Create table if it doesn't exist
-        c.execute('''CREATE TABLE IF NOT EXISTS analysis_history
-                    (user_id text, job_post text, analysis text, timestamp text)''')
+        # Check if table exists
+        c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='analysis_history' ''')
+        
+        # If table doesn't exist, create it
+        if c.fetchone()[0] == 0:
+            c.execute('''CREATE TABLE analysis_history
+                        (user_id TEXT,
+                         job_post TEXT,
+                         analysis TEXT,
+                         timestamp TEXT)''')
+            conn.commit()
+            
+    except Exception as e:
+        st.error(f"Database initialization error: {str(e)}")
+    finally:
+        conn.close()
+
+def save_analysis(user_id, job_post, analysis):
+    """Save analysis to database"""
+    try:
+        # Ensure database is initialized
+        init_analysis_db()
+        
+        conn = sqlite3.connect('applyai.db')
+        c = conn.cursor()
         
         # Insert analysis
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -57,16 +57,39 @@ def extract_text_from_docx(docx_file):
     except Exception as e:
         raise Exception(f"Error reading DOCX: {str(e)}")
 
-def save_resume(user_id, filename, content, file_type):
-    """Save resume to database"""
+def init_resume_db():
+    """Initialize or migrate resume database"""
     try:
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        # Create table if it doesn't exist
-        c.execute('''CREATE TABLE IF NOT EXISTS resumes
-                    (user_id text, filename text, content text, file_type text, 
-                     timestamp text, PRIMARY KEY (user_id, filename))''')
+        # Check if table exists
+        c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='resumes' ''')
+        
+        # If table doesn't exist, create it
+        if c.fetchone()[0] == 0:
+            c.execute('''CREATE TABLE resumes
+                        (user_id TEXT,
+                         filename TEXT,
+                         content TEXT,
+                         file_type TEXT,
+                         timestamp TEXT,
+                         PRIMARY KEY (user_id, filename))''')
+            conn.commit()
+            
+    except Exception as e:
+        st.error(f"Database initialization error: {str(e)}")
+    finally:
+        conn.close()
+
+def save_resume(user_id, filename, content, file_type):
+    """Save resume to database"""
+    try:
+        # Ensure database is initialized
+        init_resume_db()
+        
+        conn = sqlite3.connect('applyai.db')
+        c = conn.cursor()
         
         # Insert or replace resume
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
