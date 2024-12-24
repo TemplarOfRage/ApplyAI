@@ -2,14 +2,52 @@ import streamlit as st
 from datetime import datetime, timedelta
 import jwt
 import json
+import hashlib
+import os
 
 # This should be moved to environment variables in production
 SECRET_KEY = "your-secret-key"
+
+# Simple in-memory user store (replace with database in production)
+@st.cache_data(show_spinner=False)
+def get_user_store():
+    """Cache the user store to persist across reruns"""
+    return {}
 
 @st.cache_data(show_spinner=False)
 def get_stored_credentials():
     """Cache the credentials to persist across reruns"""
     return {}
+
+def hash_password(password):
+    """Create a secure hash of the password"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(username, password):
+    """Create a new user"""
+    users = get_user_store()
+    
+    if username in users:
+        return False, "Username already exists"
+    
+    users[username] = {
+        'password_hash': hash_password(password),
+        'created_at': datetime.utcnow().isoformat()
+    }
+    
+    # Force cache update
+    get_user_store.clear()
+    return True, "User created successfully"
+
+def authenticate_user(username, password):
+    """Authenticate a user"""
+    users = get_user_store()
+    
+    if username not in users:
+        return False
+    
+    stored_hash = users[username]['password_hash']
+    return stored_hash == hash_password(password)
 
 def create_auth_token(user_id):
     """Create a JWT token for the user"""
@@ -48,29 +86,50 @@ def check_authentication():
             st.session_state.user_id = user_id
             return True
     
-    # If not authenticated, show login form
-    st.title("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    # If not authenticated, show login/register form
+    tab1, tab2 = st.tabs(["Login", "Register"])
     
-    if st.button("Login"):
-        if authenticate_user(username, password):
-            user_id = username  # Or however you generate/retrieve user_id
+    with tab1:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        
+        if st.button("Login", key="login_button"):
+            if authenticate_user(username, password):
+                user_id = username
+                
+                # Set session state
+                st.session_state.user_id = user_id
+                
+                # Create auth token and store it
+                token = create_auth_token(user_id)
+                stored_creds = get_stored_credentials()
+                stored_creds['auth_token'] = token
+                
+                # Force cache update
+                get_stored_credentials.clear()
+                
+                return True
+            else:
+                st.error("Invalid username or password")
+                return False
+    
+    with tab2:
+        st.subheader("Register")
+        new_username = st.text_input("Username", key="register_username")
+        new_password = st.text_input("Password", type="password", key="register_password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        
+        if st.button("Register", key="register_button"):
+            if new_password != confirm_password:
+                st.error("Passwords do not match")
+                return False
             
-            # Set session state
-            st.session_state.user_id = user_id
-            
-            # Create auth token and store it
-            token = create_auth_token(user_id)
-            stored_creds = get_stored_credentials()
-            stored_creds['auth_token'] = token
-            
-            # Force cache update
-            get_stored_credentials.clear()
-            
-            return True
-        else:
-            st.error("Invalid username or password")
+            success, message = create_user(new_username, new_password)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
             return False
             
     return False
