@@ -107,14 +107,23 @@ def save_resume(user_id, filename, content, file_type):
 def get_user_resumes(user_id):
     """Get all resumes for a user"""
     try:
+        # Ensure database is initialized
+        init_resume_db()
+        
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        c.execute('SELECT filename, content, file_type FROM resumes WHERE user_id = ? ORDER BY timestamp DESC',
-                 (user_id,))
-        return c.fetchall()
+        try:
+            c.execute('SELECT filename, content, file_type FROM resumes WHERE user_id = ? ORDER BY timestamp DESC',
+                     (user_id,))
+            return c.fetchall()
+        except sqlite3.OperationalError:
+            # If there's a database error, return empty list instead of showing error
+            return []
+            
     except Exception as e:
-        st.error(f"Error fetching resumes: {str(e)}")
+        # Log the error but don't show it to the user
+        print(f"Error fetching resumes: {str(e)}")
         return []
     finally:
         conn.close()
