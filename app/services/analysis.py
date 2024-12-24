@@ -108,14 +108,23 @@ def save_analysis(user_id, job_post, analysis):
 def get_user_analysis_history(user_id):
     """Get analysis history for a user"""
     try:
+        # Ensure database is initialized
+        init_analysis_db()
+        
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        c.execute('SELECT job_post, analysis, timestamp FROM analysis_history WHERE user_id = ? ORDER BY timestamp DESC',
-                 (user_id,))
-        return c.fetchall()
+        try:
+            c.execute('SELECT job_post, analysis, timestamp FROM analysis_history WHERE user_id = ? ORDER BY timestamp DESC',
+                     (user_id,))
+            return c.fetchall()
+        except sqlite3.OperationalError:
+            # If there's a database error, return empty list instead of showing error
+            return []
+            
     except Exception as e:
-        st.error(f"Error fetching analysis history: {str(e)}")
+        # Log the error but don't show it to the user
+        print(f"Error fetching analysis history: {str(e)}")
         return []
     finally:
         conn.close()
