@@ -192,6 +192,10 @@ def main():
         # Initialize session state for job posting content if not exists
         if 'job_post_content' not in st.session_state:
             st.session_state.job_post_content = ""
+            
+        # Track previous URL to detect changes
+        if 'previous_url' not in st.session_state:
+            st.session_state.previous_url = ""
         
         # URL Input with experimental label
         job_url = st.text_input(
@@ -199,11 +203,13 @@ def main():
             help="Automatic content extraction may not work for all job sites"
         )
         
-        if job_url:
+        # Only extract content if URL is new or changed
+        if job_url and job_url != st.session_state.previous_url:
             with st.spinner("Extracting job posting content..."):
                 success, content = extract_job_posting_from_url(job_url)
                 if success:
                     st.session_state.job_post_content = content
+                    st.session_state.previous_url = job_url
                     st.success("✅ Content extracted successfully")
                 else:
                     st.error(content)
@@ -213,11 +219,13 @@ def main():
             "Job Posting Content",
             value=st.session_state.job_post_content,
             placeholder="Enter job posting content here. If you provided a URL above, the content will appear here automatically.",
-            height=200
+            height=200,
+            key="job_posting_textarea"  # Added unique key
         )
         
-        # Update session state with whatever is in the text area
-        st.session_state.job_post_content = job_post
+        # Manual updates to content should also be saved
+        if job_post != st.session_state.job_post_content:
+            st.session_state.job_post_content = job_post
 
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
