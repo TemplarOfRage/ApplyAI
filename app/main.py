@@ -60,18 +60,41 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Hide the default file uploader UI elements
+        # Custom CSS to hide file uploader UI elements
         st.markdown("""
             <style>
-                .stFileUploader > div > div > button {
-                    display: none;
+                /* Hide the default file uploader UI */
+                .stFileUploader > div:first-child {
+                    height: 0;
+                    overflow: hidden;
                 }
-                .stFileUploader > div > div:has(button) {
-                    display: none;
+                
+                /* Hide the uploaded file info */
+                .uploadedFile {
+                    display: none !important;
+                }
+                
+                /* Custom upload area */
+                .custom-upload {
+                    border: 2px dashed #ccc;
+                    border-radius: 5px;
+                    padding: 20px;
+                    text-align: center;
+                    background: #f8f9fa;
+                    margin-bottom: 20px;
                 }
             </style>
         """, unsafe_allow_html=True)
         
+        # Custom upload area
+        st.markdown("""
+            <div class="custom-upload">
+                <p>📤 Drag and drop your resume here or click to browse</p>
+                <p style="font-size: 0.8em; color: #666;">Supported formats: PDF, DOCX, TXT • Max size: 5MB</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Hidden file uploader
         uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], 
                                        label_visibility="collapsed",
                                        key="resume_uploader")
@@ -83,9 +106,9 @@ def render_resume_section(col2):
                     if content and save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
                         # Clear the file uploader
                         st.session_state.resume_uploader = None
-                        st.rerun()
+                        st.experimental_rerun()
             except Exception as e:
-                print(f"Error processing file: {str(e)}")  # Log error but don't show to user
+                print(f"Error processing file: {str(e)}")
         
         st.divider()
         render_saved_resumes()
