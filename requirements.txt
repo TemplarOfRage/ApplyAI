@@ -1,25 +1,32 @@
-# Core Application Dependencies
-streamlit>=1.31.0          # Web application framework
-anthropic>=0.18.0          # Claude API client
-PyPDF2>=3.0.0             # PDF file processing
-python-docx>=1.0.0         # Word document processing
-docx2txt>=0.8             # Word document text extraction
-bcrypt>=4.0.0             # Password hashing
-python-dateutil>=2.8.2     # Date handling utilities
+# Requirements for Job Buddy Application
 
-# Database
-sqlite3>=0                 # Default Python package, no version needed
+# Core Streamlit and Python dependencies
+streamlit==1.31.1
+python-dotenv>=1.0.0
 
-# File Handling
-pathlib>=1.0.1            # Path manipulation utilities
+# AI and API dependencies
+anthropic>=0.18.0
+openai>=1.0.0
 
-# Type Hints
-typing-extensions>=4.9.0   # Enhanced typing support
+# Document processing
+PyPDF2>=3.0.1
+python-docx>=1.1.0
+docx2txt>=0.8
 
-# Development Tools & Testing (optional but recommended)
-pytest>=7.0.0             # Testing framework
-black>=24.0.0             # Code formatting
-flake8>=7.0.0             # Code linting
-isort>=5.13.0             # Import sorting
-mypy>=1.8.0               # Static type checking
-pre-commit>=3.5.0         # Git hooks manager
+# Authentication and security
+bcrypt>=4.0.1
+
+# Utility libraries
+python-dateutil>=2.9.0
+
+# Database (use built-in sqlite3, remove explicit requirement)
+# No need to specify sqlite3 as it's part of Python standard library
+
+# Optional: Additional useful libraries
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Development and testing (optional)
+pytest>=7.3.0
+black>=23.0.0
+flake8>=6.0.0
