@@ -200,21 +200,22 @@ def main():
         # URL Input with experimental label
         job_url = st.text_input(
             "Job URL (Experimental)",
-            help="Automatic content extraction may not work for all job sites"
+            help="We'll try to extract the job posting automatically, but this may not work for all websites. If extraction fails, please paste the job description manually below."
         )
         
         # Handle URL content extraction
         if job_url and (not st.session_state.extraction_attempted or job_url != st.session_state.previous_url):
-            with st.spinner("Extracting job posting content..."):
+            with st.spinner("Attempting to extract job posting content..."):
                 success, content = extract_job_posting_from_url(job_url)
                 st.session_state.extraction_attempted = True
                 st.session_state.previous_url = job_url
                 
                 if success:
                     st.session_state.job_post_content = content
-                    st.success("✅ Content extracted successfully")
+                    st.success("✅ Content extracted successfully! Please review and edit if needed.")
                 else:
                     st.error(content)
+                    st.info("💡 Tip: Try copying the job description directly from the website and pasting it below.")
         
         # Job posting content area
         job_post = st.text_area(
