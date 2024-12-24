@@ -45,14 +45,19 @@ def create_user(username, password):
     return True, "User created successfully"
 
 def authenticate_user(username, password):
-    """Authenticate a user"""
-    users = get_user_store()
-    
-    if username not in users:
+    """Authenticate a user using Streamlit secrets"""
+    try:
+        # Get users from secrets.toml
+        users = st.secrets.get("users", {})
+        
+        # Check if username exists and password matches
+        if username in users and users[username] == password:
+            return True
+            
         return False
-    
-    stored_hash = users[username]['password_hash']
-    return stored_hash == hash_password(password)
+    except Exception as e:
+        st.error(f"Authentication error: {str(e)}")
+        return False
 
 def create_auth_token(user_id):
     """Create a JWT token for the user"""
@@ -91,205 +96,105 @@ def check_authentication():
             st.session_state.user_id = user_id
             return True
     
-    # Custom CSS for better styling
-    st.markdown("""
-        <style>
-        .main-header {
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 3em;
-            font-weight: 700;
-            background: linear-gradient(90deg, #4776E6 0%, #8E54E9 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0;
-        }
-        .subheader {
-            font-size: 1.5em;
-            color: #666;
-            margin-bottom: 2em;
-        }
-        .feature-card {
-            padding: 1.5em;
-            border-radius: 10px;
-            background: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin: 1em 0;
-            border: 1px solid #f0f0f0;
-        }
-        .feature-icon {
-            font-size: 2em;
-            margin-bottom: 0.5em;
-        }
-        .feature-title {
-            font-weight: 600;
-            margin-bottom: 0.5em;
-        }
-        .feature-text {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .testimonial {
-            font-style: italic;
-            color: #555;
-            padding: 1em;
-            border-left: 3px solid #8E54E9;
-            background: #f8f9fa;
-        }
-        .waitlist-container {
-            text-align: center;
-            padding: 2em;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-            border-radius: 10px;
-            margin: 1em 0;
-        }
-        .waitlist-header {
-            font-size: 1.5em;
-            font-weight: 600;
-            margin-bottom: 1em;
-            background: linear-gradient(90deg, #4776E6 0%, #8E54E9 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .waitlist-text {
-            color: #666;
-            margin-bottom: 1.5em;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # If not authenticated, show welcome screen
+    st.title("🎯 Welcome to ApplyAI")
     
-    # Hero Section
-    st.markdown('<h1 class="main-header">ApplyAI</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subheader">Your AI-powered career acceleration platform</p>', unsafe_allow_html=True)
-    
-    # Quick Stats
+    # Feature highlights with icons
     col1, col2, col3 = st.columns(3)
+    
     with col1:
-        st.metric("Success Rate", "85%", "vs. industry avg.")
+        st.markdown("### 📝 Resume Management")
+        st.write("Upload and manage multiple versions of your resume")
+    
     with col2:
-        st.metric("Time Saved", "75%", "per application")
+        st.markdown("### 🔍 Job Analysis")
+        st.write("Get AI-powered insights on job postings and requirements")
+    
     with col3:
-        st.metric("User Rating", "4.9/5", "⭐")
+        st.markdown("### ✨ Custom Tailoring")
+        st.write("Receive personalized suggestions to match job requirements")
     
     st.divider()
     
-    # Main Features Section
-    st.subheader("Why Choose ApplyAI?")
+    # Description
+    st.markdown("""
+    ApplyAI is your intelligent job application assistant that helps you:
+    - 📊 Analyze job postings for key requirements
+    - 🎯 Match your skills to job requirements
+    - 💡 Generate tailored application materials
+    - 🔄 Track your application history
+    """)
     
-    feat_col1, feat_col2, feat_col3 = st.columns(3)
-    
-    with feat_col1:
-        st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <div class="feature-title">Smart Job Analysis</div>
-                <div class="feature-text">
-                    Instantly analyze job descriptions and identify key requirements using advanced AI technology.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    with feat_col2:
-        st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">✨</div>
-                <div class="feature-title">Tailored Applications</div>
-                <div class="feature-text">
-                    Get personalized suggestions to match your experience with job requirements perfectly.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    with feat_col3:
-        st.markdown("""
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <div class="feature-title">Progress Tracking</div>
-                <div class="feature-text">
-                    Monitor your application success rate and improve with AI-powered insights.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # Social Proof
     st.divider()
-    col1, col2 = st.columns([2, 1])
     
-    with col1:
-        st.subheader("What Users Say")
-        st.markdown("""
-            <div class="testimonial">
-                "ApplyAI helped me land my dream job at a top tech company. The AI-powered insights were game-changing!"
-                <br><strong>- Sarah K., Software Engineer</strong>
-            </div>
-        """, unsafe_allow_html=True)
+    # Initialize default users if store is empty (for testing)
+    users = get_user_store()
+    if not users:
+        create_user("test", "test")  # Create a test user
     
-    with col2:
-        # Login/Waitlist Container
-        st.markdown("""
-            <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        """, unsafe_allow_html=True)
+    # Login/Register tabs
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    
+    with tab1:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
         
-        tab1, tab2 = st.tabs(["Login", "Join Waitlist"])
-        
-        with tab1:
-            username = st.text_input("Username", key="login_username", placeholder="Enter your username")
-            password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
-            if st.button("Login", key="login_button", type="primary", use_container_width=True):
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            if st.button("Login", key="login_button", type="primary"):
                 if authenticate_user(username, password):
                     user_id = username
+                    
+                    # Set session state
                     st.session_state.user_id = user_id
+                    
+                    # Create auth token and store it
                     token = create_auth_token(user_id)
+                    stored_creds = get_stored_credentials()
+                    stored_creds['auth_token'] = token
+                    
+                    # Force cache update
+                    get_stored_credentials.clear()
+                    
+                    st.rerun()
+                    return True
+                else:
+                    st.error("Invalid username or password")
+                    return False
+    
+    with tab2:
+        st.subheader("Register")
+        new_username = st.text_input("Username", key="register_username")
+        new_password = st.text_input("Password", type="password", key="register_password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            if st.button("Register", key="register_button", type="primary"):
+                if not new_username or not new_password:
+                    st.error("Please provide both username and password")
+                    return False
+                    
+                if new_password != confirm_password:
+                    st.error("Passwords do not match")
+                    return False
+                
+                success, message = create_user(new_username, new_password)
+                if success:
+                    st.success(message)
+                    # Automatically log in after successful registration
+                    st.session_state.user_id = new_username
+                    token = create_auth_token(new_username)
                     stored_creds = get_stored_credentials()
                     stored_creds['auth_token'] = token
                     get_stored_credentials.clear()
                     st.rerun()
                     return True
                 else:
-                    st.error("Invalid username or password")
-        
-        with tab2:
-            st.markdown("""
-                <div class="waitlist-container">
-                    <div class="waitlist-header">🚀 Join the Waitlist!</div>
-                    <div class="waitlist-text">
-                        Be among the first to experience the future of job applications.
-                        Get early access and exclusive features!
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                    st.error(message)
+                    return False
             
-            email = st.text_input("Email Address", placeholder="Enter your email", key="waitlist_email")
-            role = st.selectbox(
-                "What best describes you?",
-                ["Select your role", "Job Seeker", "Recent Graduate", "Career Changer", "Professional"],
-                key="waitlist_role"
-            )
-            
-            if st.button("Join Waitlist", type="primary", use_container_width=True):
-                if not email or role == "Select your role":
-                    st.error("Please fill in all fields")
-                elif not "@" in email:
-                    st.error("Please enter a valid email address")
-                else:
-                    st.success("🎉 Thanks for joining! We'll notify you when registration opens.")
-                    st.markdown("""
-                        <div style="text-align: center; margin-top: 1em; color: #666;">
-                            Share ApplyAI with your network:
-                            <div style="margin-top: 0.5em;">
-                                <a href="#" style="text-decoration: none; margin: 0 0.5em;">📱 Twitter</a>
-                                <a href="#" style="text-decoration: none; margin: 0 0.5em;">💼 LinkedIn</a>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-    
-    # Footer
-    st.divider()
-    st.markdown("""
-        <div style="text-align: center; color: #666; padding: 2em;">
-            © 2024 ApplyAI • Privacy Policy • Terms of Service
-        </div>
-    """, unsafe_allow_html=True)
-    
     return False
 
 def logout():
