@@ -21,8 +21,11 @@ def get_stored_credentials():
 def authenticate_user(username, password):
     """Authenticate a user using Streamlit secrets"""
     try:
-        users = st.secrets.users
-        if username in users and users[username] == password:
+        # Debug print (remove in production)
+        print("Available users:", st.secrets.users.keys())
+        
+        # Access the users section and check credentials
+        if username in st.secrets.users and st.secrets.users[username] == password:
             return True
         return False
     except Exception as e:
