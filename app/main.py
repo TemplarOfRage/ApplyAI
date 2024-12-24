@@ -1,12 +1,9 @@
-# app/main.py
 """
 Main Streamlit application entry point for ApplyAI.
 """
 
 import streamlit as st
 import anthropic
-import uuid
-import datetime
 import sys
 import os
 
@@ -18,6 +15,44 @@ from services.auth import create_user, authenticate_user, check_authentication
 from services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
 from services.analysis import save_analysis, get_user_analysis_history
 from config import init_streamlit_config, get_api_key
+
+def debug_analysis_rendering(analysis):
+    """
+    Helper function to debug analysis rendering and ensure all sections are visible.
+    """
+    st.write("Full Analysis Debug:")
+    st.code(analysis)
+    
+    # Try to explicitly render each section
+    sections = [
+        "## Initial Assessment",
+        "## Match Analysis", 
+        "## Resume Strategy", 
+        "## Tailored Resume", 
+        "## Custom Responses", 
+        "## Follow-up Actions"
+    ]
+    
+    for section in sections:
+        st.write(f"Checking section: {section}")
+        section_content = extract_section(analysis, section)
+        if section_content:
+            st.markdown(f"{section}")
+            st.markdown(section_content)
+        else:
+            st.warning(f"No content found for section: {section}")
+
+def extract_section(text, section_header):
+    """
+    Extract a specific section from the analysis text.
+    """
+    sections = text.split('##')
+    for section in sections:
+        if section.strip().startswith(section_header.replace('## ', '')):
+            # Remove the section header
+            section_content = section.split('\n', 1)[1] if '\n' in section else ''
+            return section_content.strip()
+    return None
 
 def main():
     # Initialize Streamlit configuration
@@ -138,14 +173,33 @@ def main():
                         Resume Context: {combined_resume_context}
                         Custom Questions: {custom_questions if custom_questions else 'None'}
                         
-                        Please analyze this application following the format:
+                        IMPORTANT INSTRUCTIONS:
+                        - Provide a comprehensive analysis of the job posting
+                        - Create a fully tailored resume section
+                        - Ensure each section is clearly labeled
+                        - Focus on specific resume modifications
+                        
+                        Please analyze this application following this EXACT format:
                         
                         ## Initial Assessment
+                        - Provide an overview of job requirements
+                        
                         ## Match Analysis
+                        - Detail how the current resume matches job requirements
+                        
                         ## Resume Strategy
+                        - Specific recommendations for resume modification
+                        
                         ## Tailored Resume
+                        - Full rewrite of the resume, highlighting key match points
+                        - Use the exact language from the job posting
+                        - Emphasize skills and experiences most relevant to this role
+                        
                         ## Custom Responses
-                        ## Follow-up Actions"""
+                        - Craft potential answers to provided custom questions
+                        
+                        ## Follow-up Actions
+                        - Recommended next steps in the application process"""
 
                         message = client.messages.create(
                             model="claude-3-sonnet-20240229",
@@ -156,11 +210,14 @@ def main():
                         analysis = message.content[0].text
                         save_analysis(st.session_state.user_id, job_post, analysis)
                         
-                        # Display analysis
-                        st.markdown(analysis)
+                        # Enhanced rendering with debugging
+                        debug_analysis_rendering(analysis)
                         
                     except Exception as e:
                         st.error(f"Analysis error: {str(e)}")
+                        # Additional error logging
+                        st.write("Detailed Error:")
+                        st.error(e)
             else:
                 st.error("Please provide a job posting")
 
