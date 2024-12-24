@@ -59,26 +59,33 @@ def render_resume_section(col2):
     """Render resume management section"""
     with col2:
         st.subheader("📄 Your Resumes")
+        
+        # Hide the default file uploader UI elements
+        st.markdown("""
+            <style>
+                .stFileUploader > div > div > button {
+                    display: none;
+                }
+                .stFileUploader > div > div:has(button) {
+                    display: none;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
         uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], 
-                                       label_visibility="collapsed")
+                                       label_visibility="collapsed",
+                                       key="resume_uploader")
         
         if uploaded_file:
             try:
-                # Validate file silently
-                if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
-                    st.error("File size too large. Please upload a file smaller than 5MB.")
-                    return
-                
-                content = extract_text_from_file(uploaded_file)
-                if content:
-                    if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                        st.rerun()  # Refresh to show new resume silently
-                    else:
-                        st.error("Failed to save resume")
-                else:
-                    st.error("Could not extract text from file")
+                if uploaded_file.size <= 5 * 1024 * 1024:  # 5MB limit
+                    content = extract_text_from_file(uploaded_file)
+                    if content and save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
+                        # Clear the file uploader
+                        st.session_state.resume_uploader = None
+                        st.rerun()
             except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
+                print(f"Error processing file: {str(e)}")  # Log error but don't show to user
         
         st.divider()
         render_saved_resumes()
