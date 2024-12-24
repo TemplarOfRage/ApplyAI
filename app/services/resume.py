@@ -84,16 +84,12 @@ def init_resume_db():
 def save_resume(user_id, filename, content, file_type):
     """Save resume to database"""
     try:
-        # Ensure database is initialized with correct schema
-        init_resume_db()
-        
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        # Get table info to verify schema
-        c.execute('PRAGMA table_info(resumes)')
-        columns = [col[1] for col in c.fetchall()]
-        print(f"Table columns: {columns}")  # Debug info
+        # Debug prints
+        print(f"Saving resume: {filename} for user: {user_id}")
+        print(f"Content length: {len(content)}")
         
         # Insert or replace resume
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -103,9 +99,16 @@ def save_resume(user_id, filename, content, file_type):
                  (user_id, filename, content, file_type, timestamp))
         
         conn.commit()
+        
+        # Verify the save
+        c.execute('SELECT COUNT(*) FROM resumes WHERE user_id = ? AND filename = ?',
+                 (user_id, filename))
+        count = c.fetchone()[0]
+        print(f"Verify save: found {count} matching records")
+        
         return True
     except Exception as e:
-        print(f"Error details: {str(e)}")  # Debug info
+        print(f"Error in save_resume: {str(e)}")  # Debug print
         st.error(f"Error saving resume: {str(e)}")
         return False
     finally:
