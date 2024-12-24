@@ -19,13 +19,75 @@ def init_streamlit_config():
         }
     )
     
-    # Add security headers
+    # Add security headers and custom CSS
     st.markdown("""
         <meta http-equiv="Content-Security-Policy" 
             content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; 
                     frame-ancestors 'self';">
         <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
         <meta http-equiv="X-Content-Type-Options" content="nosniff">
+        
+        <style>
+            /* Global font size reduction */
+            .stMarkdown, .stText, .stTextArea textarea, .stTextInput input, 
+            .stSelectbox select, .stMultiSelect select {
+                font-size: 0.9rem !important;
+            }
+            
+            /* Headers size adjustment */
+            h1 {
+                font-size: 1.8rem !important;
+            }
+            
+            h2 {
+                font-size: 1.5rem !important;
+            }
+            
+            h3 {
+                font-size: 1.2rem !important;
+            }
+            
+            /* Sidebar text */
+            .css-17lntkn {
+                font-size: 0.9rem !important;
+            }
+            
+            /* Button text */
+            .stButton button {
+                font-size: 0.9rem !important;
+            }
+            
+            /* Expander headers */
+            .streamlit-expanderHeader {
+                font-size: 0.9rem !important;
+            }
+            
+            /* Success/Error/Warning messages */
+            .stAlert {
+                font-size: 0.9rem !important;
+            }
+            
+            /* Text areas */
+            .stTextArea textarea {
+                line-height: 1.2 !important;
+            }
+            
+            /* Analysis output */
+            .element-container .stMarkdown {
+                line-height: 1.4 !important;
+            }
+            
+            /* Compact padding */
+            .block-container {
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
+            }
+            
+            /* More compact spacing between elements */
+            .element-container {
+                margin-bottom: 0.5rem !important;
+            }
+        </style>
     """, unsafe_allow_html=True)
     
     # Disable telemetry
