@@ -21,21 +21,12 @@ def get_stored_credentials():
 def authenticate_user(username, password):
     """Authenticate a user using Streamlit secrets"""
     try:
-        # Debug prints
-        st.write("Debug: Checking authentication")
-        st.write(f"Debug: Attempting login for user: {username}")
-        
         # Check against USERNAME and PASSWORD in secrets
         if (username == st.secrets.USERNAME and 
             password == st.secrets.PASSWORD):
-            st.write("Debug: Login successful!")
             return True
-        
-        st.write("Debug: Login failed - invalid credentials")
         return False
-        
     except Exception as e:
-        st.write(f"Debug: Authentication error: {str(e)}")
         return False
 
 def create_auth_token(user_id):
