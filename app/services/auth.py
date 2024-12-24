@@ -25,12 +25,9 @@ def authenticate_user(username, password):
         st.write("Debug: Checking authentication")
         st.write(f"Debug: Attempting login for user: {username}")
         
-        # Get all secrets (excluding sensitive info from debug)
-        secrets_keys = st.secrets.keys()
-        st.write("Debug: Available secret keys:", secrets_keys)
-        
-        # Check if the username exists as a key and matches password
-        if hasattr(st.secrets, username) and getattr(st.secrets, username) == password:
+        # Check against USERNAME and PASSWORD in secrets
+        if (username == st.secrets.USERNAME and 
+            password == st.secrets.PASSWORD):
             st.write("Debug: Login successful!")
             return True
         
