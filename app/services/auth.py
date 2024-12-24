@@ -24,11 +24,13 @@ def authenticate_user(username, password):
         # Debug prints
         st.write("Debug: Checking authentication")
         st.write(f"Debug: Attempting login for user: {username}")
-        st.write("Debug: Available secrets structure:", st.secrets)
-        st.write("Debug: Available users:", dict(st.secrets.users))
         
-        # Access the users section and check credentials
-        if username in st.secrets.users and st.secrets.users[username] == password:
+        # Get all secrets (excluding sensitive info from debug)
+        secrets_keys = st.secrets.keys()
+        st.write("Debug: Available secret keys:", secrets_keys)
+        
+        # Check if the username exists as a key and matches password
+        if hasattr(st.secrets, username) and getattr(st.secrets, username) == password:
             st.write("Debug: Login successful!")
             return True
         
