@@ -87,6 +87,42 @@ def init_streamlit_config():
             .element-container {
                 margin-bottom: 0.5rem !important;
             }
+            
+            /* Resume file hover effect */
+            .resume-file {
+                transition: background-color 0.3s;
+            }
+            
+            .resume-file:hover {
+                background-color: #f0f2f6;
+            }
+            
+            /* Custom tooltip */
+            .resume-file[data-tooltip] {
+                position: relative;
+            }
+            
+            .resume-file[data-tooltip]:before {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 8px;
+                background-color: #333;
+                color: white;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s;
+            }
+            
+            .resume-file:hover[data-tooltip]:before {
+                opacity: 1;
+                visibility: visible;
+            }
         </style>
     """, unsafe_allow_html=True)
     

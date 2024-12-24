@@ -59,11 +59,12 @@ def render_resume_section(col2):
     """Render resume management section"""
     with col2:
         st.subheader("📄 Your Resumes")
-        uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"])
+        uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], 
+                                       label_visibility="collapsed")
         
         if uploaded_file:
             try:
-                # Validate file
+                # Validate file silently
                 if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
                     st.error("File size too large. Please upload a file smaller than 5MB.")
                     return
@@ -71,8 +72,7 @@ def render_resume_section(col2):
                 content = extract_text_from_file(uploaded_file)
                 if content:
                     if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                        st.success(f"Resume '{uploaded_file.name}' uploaded successfully!")
-                        st.rerun()  # Refresh to show new resume
+                        st.rerun()  # Refresh to show new resume silently
                     else:
                         st.error("Failed to save resume")
                 else:
@@ -102,6 +102,7 @@ def render_saved_resumes():
                          onmouseout="this.style.backgroundColor='transparent'"
                          style="padding: 8px; border-radius: 4px; cursor: pointer;">
                         📄 {name}
+                        <span class="file-info">({file_type})</span>
                     </div>
                 """, unsafe_allow_html=True)
             
