@@ -11,8 +11,32 @@ def init_streamlit_config():
         page_title="ApplyAI",
         page_icon="🎯",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Get Help': None,
+            'Report a bug': None,
+            'About': None
+        }
     )
+    
+    # Add security headers
+    st.markdown("""
+        <meta http-equiv="Content-Security-Policy" 
+            content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; 
+                    frame-ancestors 'self';">
+        <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+        <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    """, unsafe_allow_html=True)
+    
+    # Disable telemetry
+    st.markdown("""
+        <script>
+            if (window.PerformanceObserver) {
+                const observer = new PerformanceObserver(() => {});
+                observer.observe({ entryTypes: ['resource'] });
+            }
+        </script>
+    """, unsafe_allow_html=True)
 
 def get_api_key():
     """Get Anthropic API key from environment or Streamlit secrets"""
