@@ -208,11 +208,23 @@ def main():
             with st.spinner("Extracting job posting content..."):
                 success, content = extract_job_posting_from_url(job_url)
                 if success:
+                    # Debug print
+                    st.write("Debug - Extracted content:", content[:100] + "...")
+                    
+                    # Update session state
                     st.session_state.job_post_content = content
                     st.session_state.previous_url = job_url
+                    
+                    # Force a rerun to update the text area
                     st.success("✅ Content extracted successfully")
+                    st.rerun()
                 else:
                     st.error(content)
+        
+        # Debug print current session state
+        st.write("Debug - Current session state content:", 
+                st.session_state.job_post_content[:100] + "..." 
+                if st.session_state.job_post_content else "No content")
         
         # Job posting content area
         job_post = st.text_area(
@@ -220,7 +232,7 @@ def main():
             value=st.session_state.job_post_content,
             placeholder="Enter job posting content here. If you provided a URL above, the content will appear here automatically.",
             height=200,
-            key="job_posting_textarea"  # Added unique key
+            key=f"job_posting_textarea_{st.session_state.previous_url}"  # Dynamic key based on URL
         )
         
         # Manual updates to content should also be saved
