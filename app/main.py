@@ -85,68 +85,8 @@ def run():
     # Create two columns for main content
     col1, col2 = st.columns([3, 2])
     
-    with col1:
-        st.subheader("📝 Job Posting Analysis")
-        
-        # Add URL input option
-        url_input = st.text_input(
-            "Job Posting URL",
-            placeholder="Paste a job posting URL here (optional)"
-        )
-        
-        # Text area for job posting
-        job_post = st.text_area(
-            "Or paste job posting text",
-            height=300,
-            placeholder="Paste the job description here to analyze it..."
-        )
-        
-        # Handle URL input
-        if url_input:
-            with st.spinner("Extracting content from URL..."):
-                url_content = extract_text_from_url(url_input)
-                if url_content:
-                    job_post = url_content
-                    st.success("Content extracted from URL!")
-        
-        if st.button("Analyze", type="primary"):
-            if not job_post:
-                st.error("Please provide a job posting (either via URL or text)")
-                return
-                
-            with st.spinner("Analyzing job posting..."):
-                try:
-                    client = anthropic.Anthropic(api_key=get_api_key())
-                    
-                    # Combine prompts for analysis
-                    messages = [
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": f"{analysis_prompt}\n\nJob Posting:\n{job_post}"
-                        }
-                    ]
-                    
-                    response = client.messages.create(
-                        model="claude-3-sonnet-20240229",
-                        max_tokens=2000,
-                        temperature=temperature,
-                        messages=messages
-                    )
-                    
-                    analysis = response.content[0].text
-                    st.success("Analysis complete!")
-                    st.markdown(analysis)
-                    
-                    # Save analysis to history
-                    save_analysis(st.session_state.user_id, job_post, analysis)
-                    
-                except Exception as e:
-                    st.error(f"Error during analysis: {str(e)}")
-                
+    render_job_analysis_section(col1, system_prompt, analysis_prompt, temperature)
+    
     with col2:
         st.subheader("📄 Your Resumes")
         uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"])
@@ -203,6 +143,53 @@ def run():
             with st.expander(f"Analysis from {timestamp}"):
                 st.text_area("Job Post", value=job_post, height=100, disabled=True)
                 st.write("Analysis:", analysis)
+
+def render_job_analysis_section(col1, system_prompt, analysis_prompt, temperature):
+    """Render job analysis section"""
+    with col1:
+        st.subheader("📝 Job Posting Analysis")
+        
+        # Check if user has any resumes
+        resumes = get_user_resumes(st.session_state.user_id)
+        
+        url_input = st.text_input(
+            "Job Posting URL",
+            placeholder="Paste a job posting URL here (optional)"
+        )
+        
+        job_post = st.text_area(
+            "Or paste job posting text",
+            height=300,
+            placeholder="Paste the job description here to analyze it..."
+        )
+        
+        if url_input:
+            with st.spinner("Extracting content from URL..."):
+                url_content = extract_text_from_url(url_input)
+                if url_content:
+                    job_post = url_content
+                    st.success("Content extracted from URL!")
+        
+        if not resumes:
+            st.warning("⚠️ Please upload a resume first to enable analysis")
+            st.button("Analyze", type="primary", disabled=True)
+        else:
+            if st.button("Analyze", type="primary"):
+                if not job_post:
+                    st.error("Please provide a job posting (either via URL or text)")
+                    return
+                    
+                with st.spinner("Analyzing job posting..."):
+                    try:
+                        analysis = analyze_job_posting(job_post, system_prompt, analysis_prompt, temperature)
+                        st.success("Analysis complete!")
+                        st.markdown(analysis)
+                        
+                        # Save analysis to history
+                        save_analysis(st.session_state.user_id, job_post, analysis)
+                        
+                    except Exception as e:
+                        st.error(f"Error during analysis: {str(e)}")
 
 if __name__ == "__main__":
     run()
