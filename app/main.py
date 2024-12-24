@@ -98,6 +98,31 @@ def extract_job_posting_from_url(url):
     except Exception as e:
         return False, f"Error processing content: {str(e)}"
 
+def get_site_specific_guidance(url):
+    """
+    Returns specific guidance based on the job posting website
+    """
+    domain = urlparse(url).netloc.lower()
+    
+    guidance = {
+        'indeed.com': "Indeed.com blocks automatic extraction. Please:\n"
+                     "1. Open the job posting on Indeed\n"
+                     "2. Click to expand the full job description\n"
+                     "3. Copy and paste the content below",
+        
+        'linkedin.com': "LinkedIn requires login. Please:\n"
+                       "1. Open the job posting on LinkedIn\n"
+                       "2. Copy the full job description\n"
+                       "3. Paste the content below",
+        
+        'glassdoor.com': "Glassdoor requires login. Please:\n"
+                         "1. Log into Glassdoor\n"
+                         "2. Open the job posting\n"
+                         "3. Copy and paste the content below"
+    }
+    
+    return guidance.get(domain, "This website couldn't be accessed automatically. Please copy and paste the job description manually.")
+
 def main():
     # Initialize Streamlit configuration
     init_streamlit_config()
@@ -215,9 +240,12 @@ def main():
                     st.session_state.job_post_content = content
                     st.success("✅ Content extracted successfully! Please review and edit if needed.")
                 else:
-                    error_msg = content if not success else "Extraction produced insufficient content."
-                    st.error(f"Unable to extract job posting content: {error_msg}")
-                    st.info("💡 Tip: Try copying the job description directly from the website and pasting it below.")
+                    # Get site-specific guidance
+                    guidance = get_site_specific_guidance(job_url)
+                    
+                    # Show error with specific guidance
+                    st.error("Unable to extract job posting content automatically")
+                    st.info(guidance)
         
         # Job posting content area
         job_post = st.text_area(
