@@ -1,20 +1,22 @@
 # app/config.py
 """
-Configuration management for Job Buddy application using Streamlit secrets.
+Configuration settings for ApplyAI.
 """
-
 import streamlit as st
 import os
 
+def init_streamlit_config():
+    """Initialize Streamlit configuration settings"""
+    st.set_page_config(
+        page_title="ApplyAI",
+        page_icon="🎯",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
 def get_api_key():
-    """
-    Retrieve Anthropic API key from Streamlit secrets.
-    """
-    try:
-        return st.secrets["ANTHROPIC_API_KEY"]
-    except KeyError:
-        st.error("Anthropic API key is missing from Streamlit secrets.")
-        return None
+    """Get Anthropic API key from environment or Streamlit secrets"""
+    return os.getenv('ANTHROPIC_API_KEY') or st.secrets.get('ANTHROPIC_API_KEY')
 
 def get_database_url():
     """
@@ -38,29 +40,6 @@ def get_credentials():
     except KeyError:
         st.error("Credentials are missing from Streamlit secrets.")
         return None
-
-def init_streamlit_config():
-    """
-    Initialize Streamlit-specific configurations.
-    """
-    st.set_page_config(
-        page_title="Job Buddy AI",
-        page_icon=":briefcase:",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    # Optional: Add custom CSS
-    st.markdown("""
-    <style>
-    .reportview-container {
-        background: #f0f2f6;
-    }
-    .sidebar .sidebar-content {
-        background: #ffffff;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
 def get_jwt_secret():
     return os.getenv('JWT_SECRET_KEY', 'your-secret-key')

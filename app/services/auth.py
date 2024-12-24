@@ -4,187 +4,170 @@ Authentication services for ApplyAI.
 """
 
 import streamlit as st
-import sqlite3
-import uuid
-import bcrypt
-from contextlib import contextmanager
+from datetime import datetime, timedelta
+import jwt
+import json
+import hashlib
 import os
 
-@contextmanager
-def get_connection():
-    """
-    Context manager for database connections.
-    """
-    # Ensure the directory exists
-    db_path = 'applyai.db'
+# This should be moved to environment variables in production
+SECRET_KEY = "your-secret-key"
+
+# Simple in-memory user store (replace with database in production)
+@st.cache_data(show_spinner=False)
+def get_user_store():
+    """Cache the user store to persist across reruns"""
+    return {}
+
+@st.cache_data(show_spinner=False)
+def get_stored_credentials():
+    """Cache the credentials to persist across reruns"""
+    return {}
+
+def hash_password(password):
+    """Create a secure hash of the password"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(username, password):
+    """Create a new user"""
+    users = get_user_store()
     
-    # Create the database connection
-    conn = sqlite3.connect(db_path, check_same_thread=False)
+    if username in users:
+        return False, "Username already exists"
+    
+    users[username] = {
+        'password_hash': hash_password(password),
+        'created_at': datetime.utcnow().isoformat()
+    }
+    
+    # Force cache update
+    get_user_store.clear()
+    return True, "User created successfully"
+
+def authenticate_user(username, password):
+    """Authenticate a user"""
+    users = get_user_store()
+    
+    if username not in users:
+        return False
+    
+    stored_hash = users[username]['password_hash']
+    return stored_hash == hash_password(password)
+
+def create_auth_token(user_id):
+    """Create a JWT token for the user"""
+    expiration = datetime.utcnow() + timedelta(days=7)
+    token = jwt.encode(
+        {
+            'user_id': user_id,
+            'exp': expiration
+        },
+        SECRET_KEY,
+        algorithm='HS256'
+    )
+    return token
+
+def verify_auth_token(token):
+    """Verify the JWT token and return the user_id if valid"""
     try:
-        yield conn
-    finally:
-        conn.close()
-
-def init_db():
-    """
-    Initialize the database with necessary tables.
-    """
-    with get_connection() as conn:
-        c = conn.cursor()
-        # Users table
-        c.execute('''CREATE TABLE IF NOT EXISTS users
-                     (id TEXT PRIMARY KEY,
-                      username TEXT UNIQUE,
-                      password_hash TEXT,
-                      created_at TIMESTAMP)''')
-        
-        # Resumes table with user association
-        c.execute('''CREATE TABLE IF NOT EXISTS resumes
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id TEXT,
-                      name TEXT,
-                      content TEXT,
-                      file_type TEXT,
-                      created_at TIMESTAMP,
-                      FOREIGN KEY(user_id) REFERENCES users(id))''')
-        
-        # Analysis history with user association
-        c.execute('''CREATE TABLE IF NOT EXISTS analysis_history
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id TEXT,
-                      job_post TEXT,
-                      analysis TEXT,
-                      created_at TIMESTAMP,
-                      FOREIGN KEY(user_id) REFERENCES users(id))''')
-        
-        # Create indexes
-        c.execute('CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_user_id ON analysis_history(user_id)')
-        
-        conn.commit()
-
-def hash_password(password: str) -> bytes:
-    """
-    Hash a password using bcrypt.
-    """
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
-def verify_password(password: str, hashed: bytes) -> bool:
-    """
-    Verify a password against its hash.
-    """
-    return bcrypt.checkpw(password.encode('utf-8'), hashed)
-
-def create_user(username: str, password: str) -> str:
-    """
-    Create a new user in the database.
-    """
-    # Ensure database is initialized
-    init_db()
-    
-    user_id = str(uuid.uuid4())
-    password_hash = hash_password(password)
-    
-    with get_connection() as conn:
-        c = conn.cursor()
-        try:
-            c.execute('''INSERT INTO users (id, username, password_hash, created_at)
-                        VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
-                     (user_id, username, password_hash))
-            conn.commit()
-            return user_id
-        except sqlite3.IntegrityError:
-            return None
-
-def authenticate_user(username: str, password: str) -> str:
-    """
-    Authenticate a user and return user ID if credentials are correct.
-    """
-    # Ensure database is initialized
-    init_db()
-    
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
-        result = c.fetchone()
-        if result and verify_password(password, result[1]):
-            return result[0]
-    return None
+        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        return payload['user_id']
+    except:
+        return None
 
 def check_authentication():
-    """
-    Handle user authentication and login/registration UI.
-    """
-    # Ensure database is initialized
-    init_db()
+    """Enhanced authentication check with session persistence"""
+    # Check if user is already authenticated in session state
+    if 'user_id' in st.session_state:
+        return True
     
-    # Safely get username from secrets, with fallback
-    try:
-        default_username = st.secrets.get("USERNAME", "admin")
-    except Exception:
-        default_username = "admin"
+    # Check for stored credentials
+    stored_creds = get_stored_credentials()
     
-    # Safely get password from secrets, with fallback
-    try:
-        default_password = st.secrets.get("PASSWORD", "password")
-    except Exception:
-        default_password = "password"
+    # If we have stored credentials, verify and use them
+    if 'auth_token' in stored_creds:
+        user_id = verify_auth_token(stored_creds['auth_token'])
+        if user_id:
+            st.session_state.user_id = user_id
+            return True
     
-    # Check if default admin exists
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('SELECT id FROM users WHERE username = ?', (default_username,))
-        if not c.fetchone():
-            # Create default admin user
-            create_user(default_username, default_password)
+    # If not authenticated, show welcome and login/register form
+    st.title("Welcome to ApplyAI")
+    st.write("""
+    Your AI-powered job application assistant. Upload your resume and let us help you
+    analyze job postings to create tailored applications.
+    """)
     
-    if 'user_id' not in st.session_state:
-        col1, col2 = st.columns([1, 3])
+    st.divider()
+    
+    # Initialize default users if store is empty (for testing)
+    users = get_user_store()
+    if not users:
+        create_user("test", "test")  # Create a test user
+    
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    
+    with tab1:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
         
+        col1, col2 = st.columns([1, 2])
         with col1:
-            st.title("Login")
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            
-            col3, col4 = st.columns(2)
-            with col3:
-                if st.button("Login", type="primary"):
-                    user_id = authenticate_user(username, password)
-                    if user_id:
-                        st.session_state.user_id = user_id
-                        st.rerun()
-                    else:
-                        st.error("Invalid credentials")
-            
-            with col4:
-                if st.button("Register"):
-                    if username and password:
-                        user_id = create_user(username, password)
-                        if user_id:
-                            st.session_state.user_id = user_id
-                            st.success("Registration successful!")
-                            st.rerun()
-                        else:
-                            st.error("Username already exists")
-                    else:
-                        st.error("Please provide username and password")
+            if st.button("Login", key="login_button", type="primary"):
+                if authenticate_user(username, password):
+                    user_id = username
+                    
+                    # Set session state
+                    st.session_state.user_id = user_id
+                    
+                    # Create auth token and store it
+                    token = create_auth_token(user_id)
+                    stored_creds = get_stored_credentials()
+                    stored_creds['auth_token'] = token
+                    
+                    # Force cache update
+                    get_stored_credentials.clear()
+                    
+                    st.rerun()
+                    return True
+                else:
+                    st.error("Invalid username or password")
+                    return False
+    
+    with tab2:
+        st.subheader("Register")
+        new_username = st.text_input("Username", key="register_username")
+        new_password = st.text_input("Password", type="password", key="register_password")
+        confirm_password = st.text_input("Confirm Password", type="password")
         
-        with col2:
-            st.title("Welcome to ApplyAI")
-            st.markdown("""
-                #### Your AI-Powered Job Application Assistant
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            if st.button("Register", key="register_button", type="primary"):
+                if not new_username or not new_password:
+                    st.error("Please provide both username and password")
+                    return False
+                    
+                if new_password != confirm_password:
+                    st.error("Passwords do not match")
+                    return False
                 
-                Transform your job search with intelligent application analysis:
-                
-                🎯 **Smart Job Fit Analysis**  
-                ✨ **Custom Resume Tailoring**  
-                💡 **Strategic Insights**  
-                📝 **Application Assistance**  
-                
-                Start your smarter job search today!
-            """)
-        return False
-    return True
+                success, message = create_user(new_username, new_password)
+                if success:
+                    st.success(message)
+                    # Automatically log in after successful registration
+                    st.session_state.user_id = new_username
+                    token = create_auth_token(new_username)
+                    stored_creds = get_stored_credentials()
+                    stored_creds['auth_token'] = token
+                    get_stored_credentials.clear()
+                    st.rerun()
+                    return True
+                else:
+                    st.error(message)
+                    return False
+            
+    return False
 
 def logout():
     """Handle logout"""
