@@ -189,23 +189,35 @@ def main():
     with col1:
         st.header("🎯 Job Posting Analysis")
         
-        # Add tab selection for input method
-        tab1, tab2 = st.tabs(["📋 Paste Job Posting", "🔗 Job Posting URL"])
+        # Add radio selection for input method
+        input_method = st.radio(
+            "Choose input method",
+            ["📋 Paste Job Posting", "🔗 Enter Job URL"],
+            horizontal=True
+        )
         
-        with tab1:
+        job_post = ""
+        
+        if input_method == "📋 Paste Job Posting":
             job_post = st.text_area("Paste the job posting here", height=200)
-            
-        with tab2:
+        else:  # URL input option
             job_url = st.text_input("Enter job posting URL")
             if job_url:
-                success, content = extract_job_posting_from_url(job_url)
-                if success:
-                    job_post = content
-                    st.success("Successfully extracted job posting!")
-                    st.text_area("Extracted Content (Review and Edit if needed)", value=job_post, height=200)
-                else:
-                    st.error(content)
-                    job_post = ""
+                with st.spinner("Extracting job posting content..."):
+                    success, content = extract_job_posting_from_url(job_url)
+                    if success:
+                        job_post = content
+                        st.success("✅ Successfully extracted job posting!")
+                        # Show the extracted content in a disabled text area
+                        st.text_area(
+                            "Extracted job posting content",
+                            value=job_post,
+                            height=200,
+                            disabled=True
+                        )
+                    else:
+                        st.error(content)
+                        job_post = ""
 
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
