@@ -19,14 +19,8 @@ def init_streamlit_config():
         }
     )
     
-    # Add security headers and custom CSS
+    # Add security headers and minimal CSS
     st.markdown("""
-        <meta http-equiv="Content-Security-Policy" 
-            content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; 
-                    frame-ancestors 'self';">
-        <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        
         <style>
             /* Global font size reduction */
             .stMarkdown, .stText, .stTextArea textarea, .stTextInput input, 
@@ -34,61 +28,7 @@ def init_streamlit_config():
                 font-size: 0.9rem !important;
             }
             
-            /* Headers size adjustment */
-            h1 {
-                font-size: 1.8rem !important;
-            }
-            
-            h2 {
-                font-size: 1.5rem !important;
-            }
-            
-            h3 {
-                font-size: 1.2rem !important;
-            }
-            
-            /* Sidebar text */
-            .css-17lntkn {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Button text */
-            .stButton button {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Expander headers */
-            .streamlit-expanderHeader {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Success/Error/Warning messages */
-            .stAlert {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Text areas */
-            .stTextArea textarea {
-                line-height: 1.2 !important;
-            }
-            
-            /* Analysis output */
-            .element-container .stMarkdown {
-                line-height: 1.4 !important;
-            }
-            
-            /* Compact padding */
-            .block-container {
-                padding-top: 2rem !important;
-                padding-bottom: 2rem !important;
-            }
-            
-            /* More compact spacing between elements */
-            .element-container {
-                margin-bottom: 0.5rem !important;
-            }
-            
-            /* Resume file hover effect */
+            /* Resume file styling */
             .resume-file {
                 transition: background-color 0.3s;
             }
@@ -97,31 +37,20 @@ def init_streamlit_config():
                 background-color: #f0f2f6;
             }
             
-            /* Custom tooltip */
-            .resume-file[data-tooltip] {
-                position: relative;
+            .file-info {
+                color: #666;
+                font-size: 0.8em;
+                margin-left: 8px;
             }
             
-            .resume-file[data-tooltip]:before {
-                content: attr(data-tooltip);
-                position: absolute;
-                bottom: 100%;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 8px;
-                background-color: #333;
-                color: white;
-                border-radius: 4px;
-                font-size: 12px;
-                white-space: nowrap;
-                opacity: 0;
-                visibility: hidden;
-                transition: opacity 0.3s;
+            /* Compact spacing */
+            .block-container {
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
             }
             
-            .resume-file:hover[data-tooltip]:before {
-                opacity: 1;
-                visibility: visible;
+            .element-container {
+                margin-bottom: 0.5rem !important;
             }
         </style>
     """, unsafe_allow_html=True)

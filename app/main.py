@@ -60,55 +60,28 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Custom CSS to hide file uploader UI elements
-        st.markdown("""
-            <style>
-                /* Hide the default file uploader UI */
-                .stFileUploader > div:first-child {
-                    height: 0;
-                    overflow: hidden;
-                }
-                
-                /* Hide the uploaded file info */
-                .uploadedFile {
-                    display: none !important;
-                }
-                
-                /* Custom upload area */
-                .custom-upload {
-                    border: 2px dashed #ccc;
-                    border-radius: 5px;
-                    padding: 20px;
-                    text-align: center;
-                    background: #f8f9fa;
-                    margin-bottom: 20px;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # Custom upload area
-        st.markdown("""
-            <div class="custom-upload">
-                <p>📤 Drag and drop your resume here or click to browse</p>
-                <p style="font-size: 0.8em; color: #666;">Supported formats: PDF, DOCX, TXT • Max size: 5MB</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Hidden file uploader
-        uploaded_file = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], 
-                                       label_visibility="collapsed",
-                                       key="resume_uploader")
+        # Simple file uploader with consistent size limit
+        uploaded_file = st.file_uploader(
+            "Drag and drop your resume here or click to browse",
+            type=["pdf", "docx", "txt"],
+            help="Supported formats: PDF, DOCX, TXT • Max size: 5MB",
+            key="resume_uploader"
+        )
         
         if uploaded_file:
             try:
                 if uploaded_file.size <= 5 * 1024 * 1024:  # 5MB limit
                     content = extract_text_from_file(uploaded_file)
                     if content and save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                        # Clear the file uploader
-                        st.session_state.resume_uploader = None
-                        st.experimental_rerun()
+                        # Clear the uploader state and force refresh
+                        st.session_state.pop('resume_uploader', None)
+                        st.rerun()
+                    else:
+                        print("Failed to save resume to database")  # Debug log
+                else:
+                    st.error("File size too large. Please upload a file smaller than 5MB.")
             except Exception as e:
-                print(f"Error processing file: {str(e)}")
+                print(f"Error processing file: {str(e)}")  # Debug log
         
         st.divider()
         render_saved_resumes()
