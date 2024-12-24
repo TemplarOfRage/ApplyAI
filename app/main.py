@@ -20,27 +20,29 @@ def debug_analysis_rendering(analysis):
     """
     Helper function to debug analysis rendering and ensure all sections are visible.
     """
-    st.write("Full Analysis Debug:")
-    st.code(analysis)
-    
-    # Try to explicitly render each section
-    sections = [
-        "## Initial Assessment",
-        "## Match Analysis", 
-        "## Resume Strategy", 
-        "## Tailored Resume", 
-        "## Custom Responses", 
-        "## Follow-up Actions"
-    ]
-    
-    for section in sections:
-        st.write(f"Checking section: {section}")
-        section_content = extract_section(analysis, section)
-        if section_content:
-            st.markdown(f"{section}")
-            st.markdown(section_content)
-        else:
-            st.warning(f"No content found for section: {section}")
+    # Wrap debug information in an expander
+    with st.expander("🔍 Debug Analysis Output", expanded=False):
+        st.write("Full Analysis Debug:")
+        st.code(analysis)
+        
+        # Try to explicitly render each section
+        sections = [
+            "## Initial Assessment",
+            "## Match Analysis", 
+            "## Resume Strategy", 
+            "## Tailored Resume", 
+            "## Custom Responses", 
+            "## Follow-up Actions"
+        ]
+        
+        for section in sections:
+            st.write(f"Checking section: {section}")
+            section_content = extract_section(analysis, section)
+            if section_content:
+                st.markdown(f"{section}")
+                st.markdown(section_content)
+            else:
+                st.warning(f"No content found for section: {section}")
 
 def extract_section(text, section_header):
     """
