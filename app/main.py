@@ -149,14 +149,21 @@ def main():
         job_post = st.text_area("Paste the job posting here", height=200)
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
-        if st.button("🎯 Analyze Job Fit", type="primary"):
+        # Get user resumes before the button
+        user_resumes = get_user_resumes(st.session_state.user_id)
+        
+        # Disable button if no resumes
+        button_disabled = not bool(user_resumes)
+        if button_disabled:
+            st.warning("⚠️ Please upload at least one resume before analyzing")
+            
+        if st.button("🎯 Analyze Job Fit", type="primary", disabled=button_disabled):
             if job_post:
                 with st.spinner("Analyzing your fit..."):
-                    # Get all user's resumes
-                    user_resumes = get_user_resumes(st.session_state.user_id)
-                    if not user_resumes:
-                        st.error("Please upload at least one resume first")
-                        return
+                    # Remove this check since we now prevent the button from being clicked
+                    # if not user_resumes:
+                    #     st.error("Please upload at least one resume first")
+                    #     return
                         
                     combined_resume_context = "\n---\n".join(
                         content for _, content, _ in user_resumes
