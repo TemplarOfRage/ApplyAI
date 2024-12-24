@@ -19,3 +19,7 @@ numpy>=1.24.0
 
 # Development and testing (optional)
 pytest>=7.3.0
+
+# Additional dependencies
+beautifulsoup4==4.12.3
+requests==2.31.0
