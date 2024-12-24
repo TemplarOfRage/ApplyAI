@@ -7,12 +7,17 @@ import streamlit as st
 import anthropic
 import uuid
 import datetime
+import sys
+import os
 
-# Use absolute imports
-from app.services.auth import create_user, authenticate_user, check_authentication
-from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
-from app.services.analysis import save_analysis, get_user_analysis_history
-from app.config import init_streamlit_config, get_api_key
+# Add the parent directory to Python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+
+# Use direct imports without the 'app' prefix
+from services.auth import create_user, authenticate_user, check_authentication
+from services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
+from services.analysis import save_analysis, get_user_analysis_history
+from config import init_streamlit_config, get_api_key
 
 def main():
     # Initialize Streamlit configuration
