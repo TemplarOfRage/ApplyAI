@@ -4,6 +4,7 @@ Configuration management for Job Buddy application using Streamlit secrets.
 """
 
 import streamlit as st
+import os
 
 def get_api_key():
     """
@@ -60,3 +61,6 @@ def init_streamlit_config():
     }
     </style>
     """, unsafe_allow_html=True)
+
+def get_jwt_secret():
+    return os.getenv('JWT_SECRET_KEY', 'your-secret-key')
