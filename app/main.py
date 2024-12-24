@@ -189,35 +189,44 @@ def main():
     with col1:
         st.header("🎯 Job Posting Analysis")
         
+        # Initialize session state for job posting content if not exists
+        if 'job_post_content' not in st.session_state:
+            st.session_state.job_post_content = ""
+        
         # Add radio selection for input method
         input_method = st.radio(
             "Choose input method",
             ["📋 Paste Job Posting", "🔗 Enter Job URL"],
-            horizontal=True
+            horizontal=True,
+            key="input_method"
         )
         
         job_post = ""
         
         if input_method == "📋 Paste Job Posting":
             job_post = st.text_area("Paste the job posting here", height=200)
+            st.session_state.job_post_content = job_post
         else:  # URL input option
             job_url = st.text_input("Enter job posting URL")
             if job_url:
                 with st.spinner("Extracting job posting content..."):
                     success, content = extract_job_posting_from_url(job_url)
                     if success:
-                        job_post = content
+                        st.session_state.job_post_content = content
                         st.success("✅ Successfully extracted job posting!")
-                        # Show the extracted content in a disabled text area
-                        st.text_area(
-                            "Extracted job posting content",
-                            value=job_post,
-                            height=200,
-                            disabled=True
-                        )
                     else:
                         st.error(content)
-                        job_post = ""
+                        st.session_state.job_post_content = ""
+            
+            # Always show the content if it exists in session state
+            if st.session_state.job_post_content:
+                st.text_area(
+                    "Extracted job posting content",
+                    value=st.session_state.job_post_content,
+                    height=200,
+                    disabled=True
+                )
+                job_post = st.session_state.job_post_content
 
         custom_questions = st.text_area("Custom application questions (Optional)", height=100)
 
