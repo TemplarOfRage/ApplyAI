@@ -112,95 +112,90 @@ def authenticate_user(username: str, password: str) -> str:
     return None
 
 def check_authentication():
-    """Enhanced authentication check with session persistence"""
-    # Check if user is already authenticated in session state
-    if 'user_id' in st.session_state:
-        return True
+    """
+    Handle user authentication and login/registration UI.
+    """
+    # Ensure database is initialized
+    init_db()
     
-    # Check for stored credentials
-    stored_creds = get_stored_credentials()
+    # Safely get username from secrets, with fallback
+    try:
+        default_username = st.secrets.get("USERNAME", "admin")
+    except Exception:
+        default_username = "admin"
     
-    # If we have stored credentials, verify and use them
-    if 'auth_token' in stored_creds:
-        user_id = verify_auth_token(stored_creds['auth_token'])
-        if user_id:
-            st.session_state.user_id = user_id
-            return True
+    # Safely get password from secrets, with fallback
+    try:
+        default_password = st.secrets.get("PASSWORD", "password")
+    except Exception:
+        default_password = "password"
     
-    # If not authenticated, show welcome and login/register form
-    st.title("Welcome to ApplyAI")
-    st.write("""
-    Your AI-powered job application assistant. Upload your resume and let us help you
-    analyze job postings to create tailored applications.
-    """)
+    # Check if default admin exists
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute('SELECT id FROM users WHERE username = ?', (default_username,))
+        if not c.fetchone():
+            # Create default admin user
+            create_user(default_username, default_password)
     
-    st.divider()
-    
-    # Initialize default users if store is empty (for testing)
-    users = get_user_store()
-    if not users:
-        create_user("test", "test")  # Create a test user
-    
-    tab1, tab2 = st.tabs(["Login", "Register"])
-    
-    with tab1:
-        st.subheader("Login")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
+    if 'user_id' not in st.session_state:
+        col1, col2 = st.columns([1, 3])
         
-        col1, col2 = st.columns([1, 2])
         with col1:
-            if st.button("Login", key="login_button", type="primary"):
-                if authenticate_user(username, password):
-                    user_id = username
-                    
-                    # Set session state
-                    st.session_state.user_id = user_id
-                    
-                    # Create auth token and store it
-                    token = create_auth_token(user_id)
-                    stored_creds = get_stored_credentials()
-                    stored_creds['auth_token'] = token
-                    
-                    # Force cache update
-                    get_stored_credentials.clear()
-                    
-                    st.rerun()
-                    return True
-                else:
-                    st.error("Invalid username or password")
-                    return False
-    
-    with tab2:
-        st.subheader("Register")
-        new_username = st.text_input("Username", key="register_username")
-        new_password = st.text_input("Password", type="password", key="register_password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            if st.button("Register", key="register_button", type="primary"):
-                if not new_username or not new_password:
-                    st.error("Please provide both username and password")
-                    return False
-                    
-                if new_password != confirm_password:
-                    st.error("Passwords do not match")
-                    return False
-                
-                success, message = create_user(new_username, new_password)
-                if success:
-                    st.success(message)
-                    # Automatically log in after successful registration
-                    st.session_state.user_id = new_username
-                    token = create_auth_token(new_username)
-                    stored_creds = get_stored_credentials()
-                    stored_creds['auth_token'] = token
-                    get_stored_credentials.clear()
-                    st.rerun()
-                    return True
-                else:
-                    st.error(message)
-                    return False
+            st.title("Login")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
             
-    return False
+            col3, col4 = st.columns(2)
+            with col3:
+                if st.button("Login", type="primary"):
+                    user_id = authenticate_user(username, password)
+                    if user_id:
+                        st.session_state.user_id = user_id
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
+            
+            with col4:
+                if st.button("Register"):
+                    if username and password:
+                        user_id = create_user(username, password)
+                        if user_id:
+                            st.session_state.user_id = user_id
+                            st.success("Registration successful!")
+                            st.rerun()
+                        else:
+                            st.error("Username already exists")
+                    else:
+                        st.error("Please provide username and password")
+        
+        with col2:
+            st.title("Welcome to ApplyAI")
+            st.markdown("""
+                #### Your AI-Powered Job Application Assistant
+                
+                Transform your job search with intelligent application analysis:
+                
+                🎯 **Smart Job Fit Analysis**  
+                ✨ **Custom Resume Tailoring**  
+                💡 **Strategic Insights**  
+                📝 **Application Assistance**  
+                
+                Start your smarter job search today!
+            """)
+        return False
+    return True
+
+def logout():
+    """Handle logout"""
+    if 'user_id' in st.session_state:
+        del st.session_state.user_id
+    
+    # Clear stored credentials
+    stored_creds = get_stored_credentials()
+    if 'auth_token' in stored_creds:
+        del stored_creds['auth_token']
+    get_stored_credentials.clear()
+    
+    # Force a rerun to update the UI
+    st.rerun()
