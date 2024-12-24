@@ -8,17 +8,60 @@ import sqlite3
 import uuid
 import bcrypt
 from contextlib import contextmanager
+import os
 
 @contextmanager
 def get_connection():
     """
     Context manager for database connections.
     """
-    conn = sqlite3.connect('applyai.db', check_same_thread=False)
+    # Ensure the directory exists
+    db_path = 'applyai.db'
+    
+    # Create the database connection
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     try:
         yield conn
     finally:
         conn.close()
+
+def init_db():
+    """
+    Initialize the database with necessary tables.
+    """
+    with get_connection() as conn:
+        c = conn.cursor()
+        # Users table
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (id TEXT PRIMARY KEY,
+                      username TEXT UNIQUE,
+                      password_hash TEXT,
+                      created_at TIMESTAMP)''')
+        
+        # Resumes table with user association
+        c.execute('''CREATE TABLE IF NOT EXISTS resumes
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id TEXT,
+                      name TEXT,
+                      content TEXT,
+                      file_type TEXT,
+                      created_at TIMESTAMP,
+                      FOREIGN KEY(user_id) REFERENCES users(id))''')
+        
+        # Analysis history with user association
+        c.execute('''CREATE TABLE IF NOT EXISTS analysis_history
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id TEXT,
+                      job_post TEXT,
+                      analysis TEXT,
+                      created_at TIMESTAMP,
+                      FOREIGN KEY(user_id) REFERENCES users(id))''')
+        
+        # Create indexes
+        c.execute('CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_user_id ON analysis_history(user_id)')
+        
+        conn.commit()
 
 def hash_password(password: str) -> bytes:
     """
@@ -36,6 +79,9 @@ def create_user(username: str, password: str) -> str:
     """
     Create a new user in the database.
     """
+    # Ensure database is initialized
+    init_db()
+    
     user_id = str(uuid.uuid4())
     password_hash = hash_password(password)
     
@@ -54,6 +100,9 @@ def authenticate_user(username: str, password: str) -> str:
     """
     Authenticate a user and return user ID if credentials are correct.
     """
+    # Ensure database is initialized
+    init_db()
+    
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
@@ -66,15 +115,30 @@ def check_authentication():
     """
     Handle user authentication and login/registration UI.
     """
+    # Ensure database is initialized
+    init_db()
+    
+    # Safely get username from secrets, with fallback
+    try:
+        default_username = st.secrets.get("USERNAME", "admin")
+    except Exception:
+        default_username = "admin"
+    
+    # Safely get password from secrets, with fallback
+    try:
+        default_password = st.secrets.get("PASSWORD", "password")
+    except Exception:
+        default_password = "password"
+    
+    # Check if default admin exists
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute('SELECT id FROM users WHERE username = ?', (default_username,))
+        if not c.fetchone():
+            # Create default admin user
+            create_user(default_username, default_password)
+    
     if 'user_id' not in st.session_state:
-        # Check if default admin exists
-        with get_connection() as conn:
-            c = conn.cursor()
-            c.execute('SELECT id FROM users WHERE username = ?', (st.secrets["USERNAME"],))
-            if not c.fetchone():
-                # Create default admin user
-                create_user(st.secrets["USERNAME"], st.secrets["PASSWORD"])
-        
         col1, col2 = st.columns([1, 3])
         
         with col1:
