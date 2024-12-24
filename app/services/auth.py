@@ -91,11 +91,33 @@ def check_authentication():
             st.session_state.user_id = user_id
             return True
     
-    # If not authenticated, show welcome and login/register form
-    st.title("Welcome to ApplyAI")
-    st.write("""
-    Your AI-powered job application assistant. Upload your resume and let us help you
-    analyze job postings to create tailored applications.
+    # If not authenticated, show welcome screen
+    st.title("🎯 Welcome to ApplyAI")
+    
+    # Feature highlights with icons
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("### 📝 Resume Management")
+        st.write("Upload and manage multiple versions of your resume")
+    
+    with col2:
+        st.markdown("### 🔍 Job Analysis")
+        st.write("Get AI-powered insights on job postings and requirements")
+    
+    with col3:
+        st.markdown("### ✨ Custom Tailoring")
+        st.write("Receive personalized suggestions to match job requirements")
+    
+    st.divider()
+    
+    # Description
+    st.markdown("""
+    ApplyAI is your intelligent job application assistant that helps you:
+    - 📊 Analyze job postings for key requirements
+    - 🎯 Match your skills to job requirements
+    - 💡 Generate tailored application materials
+    - 🔄 Track your application history
     """)
     
     st.divider()
@@ -105,6 +127,7 @@ def check_authentication():
     if not users:
         create_user("test", "test")  # Create a test user
     
+    # Login/Register tabs
     tab1, tab2 = st.tabs(["Login", "Register"])
     
     with tab1:
