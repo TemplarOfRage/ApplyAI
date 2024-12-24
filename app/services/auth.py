@@ -21,16 +21,12 @@ def get_stored_credentials():
 def authenticate_user(username, password):
     """Authenticate a user using Streamlit secrets"""
     try:
-        # Get users from secrets.toml
-        users = st.secrets.get("users", {})
-        
-        # Check if username exists and password matches
+        users = st.secrets.users
         if username in users and users[username] == password:
             return True
-            
         return False
     except Exception as e:
-        st.error(f"Authentication error: {str(e)}")
+        print(f"Authentication error: {str(e)}")  # For debugging
         return False
 
 def create_auth_token(user_id):
