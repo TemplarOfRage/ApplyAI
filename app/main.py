@@ -13,9 +13,10 @@ from urllib.parse import urlparse
 # Add the parent directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
-from services.auth import check_authentication, logout
-from services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
-from services.analysis import save_analysis, get_user_analysis_history
+# Use direct imports without the 'app' prefix
+from app.services.auth import create_user, authenticate_user, check_authentication, logout
+from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
+from app.services.analysis import save_analysis, get_user_analysis_history
 from config import init_streamlit_config, get_api_key
 
 def debug_analysis_rendering(analysis):

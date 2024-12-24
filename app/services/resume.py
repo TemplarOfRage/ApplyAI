@@ -3,83 +3,92 @@
 Resume processing services for ApplyAI.
 """
 
-import sqlite3
-from contextlib import contextmanager
-from typing import List, Tuple
+import streamlit as st
+from datetime import datetime
 import PyPDF2
-import docx2txt
+import docx
+import io
 
-@contextmanager
-def get_connection():
-    """
-    Context manager for database connections.
-    """
-    conn = sqlite3.connect('applyai.db', check_same_thread=False)
-    try:
-        yield conn
-    finally:
-        conn.close()
+# In-memory storage for resumes (replace with database in production)
+@st.cache_data(show_spinner=False)
+def get_resume_store():
+    """Cache the resume store to persist across reruns"""
+    return {}
 
-def extract_text_from_file(file) -> str:
-    """
-    Extract text from different file types.
-    """
+def extract_text_from_file(uploaded_file):
+    """Extract text content from various file types"""
     try:
-        if file.type == "application/pdf":
-            pdf_reader = PyPDF2.PdfReader(file)
-            return " ".join(page.extract_text() for page in pdf_reader.pages)
-        elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            return docx2txt.process(file)
+        # Get the file extension
+        file_type = uploaded_file.type
+        
+        if 'pdf' in file_type.lower():
+            # Handle PDF files
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+            return text
+            
+        elif 'word' in file_type.lower() or 'docx' in file_type.lower():
+            # Handle Word documents
+            doc = docx.Document(io.BytesIO(uploaded_file.read()))
+            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            return text
+            
+        elif 'text' in file_type.lower():
+            # Handle plain text files
+            return uploaded_file.getvalue().decode('utf-8')
+            
         else:
-            # For text files or other types
-            return file.getvalue().decode()
+            return None
+            
     except Exception as e:
-        print(f"Error reading file: {str(e)}")
+        st.error(f"Error extracting text: {str(e)}")
         return None
 
-def save_resume(user_id: str, name: str, content: str, file_type: str):
-    """
-    Save or update a user's resume.
-    """
-    with get_connection() as conn:
-        c = conn.cursor()
-        # Check if resume with same name exists
-        c.execute('''SELECT id FROM resumes 
-                    WHERE user_id = ? AND name = ?''', (user_id, name))
-        existing = c.fetchone()
+def save_resume(user_id, name, content, file_type):
+    """Save a resume to storage"""
+    resumes = get_resume_store()
+    
+    # Initialize user's resume storage if it doesn't exist
+    if user_id not in resumes:
+        resumes[user_id] = {}
+    
+    # Save the resume with metadata
+    resumes[user_id][name] = {
+        'content': content,
+        'file_type': file_type,
+        'uploaded_at': datetime.utcnow().isoformat()
+    }
+    
+    # Force cache update
+    get_resume_store.clear()
+    return True
+
+def get_user_resumes(user_id):
+    """Get all resumes for a user"""
+    resumes = get_resume_store()
+    
+    if user_id not in resumes:
+        return []
+    
+    # Return list of tuples (name, content, file_type)
+    return [(name, data['content'], data['file_type']) 
+            for name, data in resumes[user_id].items()]
+
+def delete_resume(user_id, name):
+    """Delete a resume from storage"""
+    resumes = get_resume_store()
+    
+    if user_id in resumes and name in resumes[user_id]:
+        del resumes[user_id][name]
         
-        if existing:
-            # Update existing resume
-            c.execute('''UPDATE resumes 
-                        SET content = ?, file_type = ?, created_at = CURRENT_TIMESTAMP
-                        WHERE user_id = ? AND name = ?''',
-                     (content, file_type, user_id, name))
-        else:
-            # Create new resume
-            c.execute('''INSERT INTO resumes 
-                        (user_id, name, content, file_type, created_at)
-                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
-                     (user_id, name, content, file_type))
-        conn.commit()
-
-def get_user_resumes(user_id: str) -> List[Tuple[str, str, str]]:
-    """
-    Retrieve all resumes for a specific user.
-    """
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('''SELECT name, content, file_type 
-                    FROM resumes 
-                    WHERE user_id = ?
-                    ORDER BY created_at DESC''', (user_id,))
-        return c.fetchall()
-
-def delete_resume(user_id: str, name: str):
-    """
-    Delete a specific resume for a user.
-    """
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('DELETE FROM resumes WHERE user_id = ? AND name = ?', 
-                 (user_id, name))
-        conn.commit()
+        # Clean up empty user entries
+        if not resumes[user_id]:
+            del resumes[user_id]
+        
+        # Force cache update
+        get_resume_store.clear()
+        return True
+        
+    return False
