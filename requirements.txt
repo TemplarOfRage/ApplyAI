@@ -1,0 +1,25 @@
+# Core Application Dependencies
+streamlit>=1.31.0          # Web application framework
+anthropic>=0.18.0          # Claude API client
+PyPDF2>=3.0.0             # PDF file processing
+python-docx>=1.0.0         # Word document processing
+docx2txt>=0.8             # Word document text extraction
+bcrypt>=4.0.0             # Password hashing
+python-dateutil>=2.8.2     # Date handling utilities
+
+# Database
+sqlite3>=0                 # Default Python package, no version needed
+
+# File Handling
+pathlib>=1.0.1            # Path manipulation utilities
+
+# Type Hints
+typing-extensions>=4.9.0   # Enhanced typing support
+
+# Development Tools & Testing (optional but recommended)
+pytest>=7.0.0             # Testing framework
+black>=24.0.0             # Code formatting
+flake8>=7.0.0             # Code linting
+isort>=5.13.0             # Import sorting
+mypy>=1.8.0               # Static type checking
+pre-commit>=3.5.0         # Git hooks manager

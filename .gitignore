@@ -1,0 +1,18 @@
+# Streamlit specific
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Database files
+*.db
+applyai.db
+
+# Environment & IDE
+.env
+.venv/
+.idea/
+.vscode/
+
+# Project specific
+__pycache__/
+*.pyc
+.DS_Store
