@@ -70,16 +70,11 @@ def render_resume_section(col2):
                 
                 content = extract_text_from_file(uploaded_file)
                 if content:
-                    # Show preview of extracted content
-                    with st.expander("Preview Extracted Content"):
-                        st.text_area("Content Preview", value=content[:500] + "...", height=150, disabled=True)
-                    
-                    if st.button("Confirm Upload"):
-                        if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                            st.success(f"Resume '{uploaded_file.name}' uploaded successfully!")
-                            st.rerun()  # Refresh to show new resume
-                        else:
-                            st.error("Failed to save resume")
+                    if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
+                        st.success(f"Resume '{uploaded_file.name}' uploaded successfully!")
+                        st.rerun()  # Refresh to show new resume
+                    else:
+                        st.error("Failed to save resume")
                 else:
                     st.error("Could not extract text from file")
             except Exception as e:
@@ -97,13 +92,35 @@ def render_saved_resumes():
         st.info("No resumes uploaded yet")
     else:
         for name, content, file_type in resumes:
-            with st.expander(f"📄 {name}"):
-                st.text_area("Content", value=content, height=200, disabled=True)
-                col1, col2 = st.columns([3, 1])
-                with col2:
-                    if st.button("Delete", key=f"del_{name}"):
-                        if delete_resume(st.session_state.user_id, name):
-                            st.rerun()
+            col1, col2, col3 = st.columns([3, 1, 1])
+            
+            with col1:
+                # Custom HTML/CSS for hover effect and popover
+                st.markdown(f"""
+                    <div class="resume-file" 
+                         onmouseover="this.style.backgroundColor='#f0f2f6'" 
+                         onmouseout="this.style.backgroundColor='transparent'"
+                         style="padding: 8px; border-radius: 4px; cursor: pointer;">
+                        📄 {name}
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                if st.button("Show Content", key=f"show_{name}"):
+                    st.session_state[f"show_content_{name}"] = True
+            
+            with col3:
+                if st.button("Delete", key=f"del_{name}"):
+                    if delete_resume(st.session_state.user_id, name):
+                        st.rerun()
+            
+            # Show content if button was clicked
+            if st.session_state.get(f"show_content_{name}", False):
+                with st.expander("Extracted Content", expanded=True):
+                    st.text_area("", value=content, height=200, disabled=True)
+                    if st.button("Hide", key=f"hide_{name}"):
+                        del st.session_state[f"show_content_{name}"]
+                        st.rerun()
 
 def render_analysis_history():
     """Render analysis history section"""
