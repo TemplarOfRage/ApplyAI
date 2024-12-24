@@ -5,48 +5,98 @@ Analysis history services for ApplyAI.
 
 import streamlit as st
 from datetime import datetime
+import sqlite3
+from app.config import get_api_key
 
-# In-memory storage for analysis history (replace with database in production)
-@st.cache_data(show_spinner=False)
-def get_analysis_store():
-    """Cache the analysis store to persist across reruns"""
-    return {}
+def extract_text_from_url(url):
+    """Extract text content from a URL"""
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text content
+        text = soup.get_text()
+        
+        # Clean up whitespace
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return text
+    except Exception as e:
+        st.error(f"Error extracting text from URL: {str(e)}")
+        return None
+
+def analyze_job_posting(job_post, system_prompt, analysis_prompt, temperature=0.7):
+    """Analyze job posting using Claude"""
+    try:
+        client = anthropic.Anthropic(api_key=get_api_key())
+        
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": f"{analysis_prompt}\n\nJob Posting:\n{job_post}"
+            }
+        ]
+        
+        response = client.messages.create(
+            model="claude-3-sonnet-20240229",
+            max_tokens=2000,
+            temperature=temperature,
+            messages=messages
+        )
+        
+        return response.content[0].text
+        
+    except Exception as e:
+        raise Exception(f"Analysis failed: {str(e)}")
 
 def save_analysis(user_id, job_post, analysis):
-    """Save an analysis to storage"""
-    analyses = get_analysis_store()
-    
-    # Initialize user's analysis storage if it doesn't exist
-    if user_id not in analyses:
-        analyses[user_id] = []
-    
-    # Add new analysis with timestamp
-    analyses[user_id].append({
-        'job_post': job_post,
-        'analysis': analysis,
-        'timestamp': datetime.utcnow().isoformat()
-    })
-    
-    # Keep only the last 10 analyses per user
-    analyses[user_id] = analyses[user_id][-10:]
-    
-    # Force cache update
-    get_analysis_store.clear()
-    return True
+    """Save analysis to database"""
+    try:
+        conn = sqlite3.connect('applyai.db')
+        c = conn.cursor()
+        
+        # Create table if it doesn't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS analysis_history
+                    (user_id text, job_post text, analysis text, timestamp text)''')
+        
+        # Insert analysis
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute('INSERT INTO analysis_history VALUES (?, ?, ?, ?)',
+                 (user_id, job_post, analysis, timestamp))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        st.error(f"Error saving analysis: {str(e)}")
+        return False
+    finally:
+        conn.close()
 
 def get_user_analysis_history(user_id):
     """Get analysis history for a user"""
-    analyses = get_analysis_store()
-    
-    if user_id not in analyses:
+    try:
+        conn = sqlite3.connect('applyai.db')
+        c = conn.cursor()
+        
+        c.execute('SELECT job_post, analysis, timestamp FROM analysis_history WHERE user_id = ? ORDER BY timestamp DESC',
+                 (user_id,))
+        return c.fetchall()
+    except Exception as e:
+        st.error(f"Error fetching analysis history: {str(e)}")
         return []
-    
-    # Return list of tuples (job_post, analysis, timestamp)
-    # Sort by timestamp in descending order (newest first)
-    return [(item['job_post'], item['analysis'], item['timestamp']) 
-            for item in sorted(analyses[user_id], 
-                             key=lambda x: x['timestamp'], 
-                             reverse=True)]
+    finally:
+        conn.close()
 
 def delete_analysis(user_id, timestamp):
     """Delete an analysis from storage"""
