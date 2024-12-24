@@ -83,22 +83,42 @@ def init_resume_db():
 
 def save_resume(user_id, filename, content, file_type):
     """Save resume to database"""
+    print(f"\n=== Starting save_resume ===")
+    print(f"User ID: {user_id}")
+    print(f"Filename: {filename}")
+    print(f"Content length: {len(content) if content else 'None'}")
+    print(f"File type: {file_type}")
+    
     try:
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
-        # Debug prints
-        print(f"Saving resume: {filename} for user: {user_id}")
-        print(f"Content length: {len(content)}")
+        # Debug: Check if table exists
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='resumes'")
+        table_exists = c.fetchone()
+        print(f"Table exists: {bool(table_exists)}")
         
-        # Insert or replace resume
+        if not table_exists:
+            print("Creating resumes table...")
+            c.execute('''CREATE TABLE resumes
+                        (user_id TEXT,
+                         filename TEXT,
+                         content TEXT,
+                         file_type TEXT,
+                         timestamp TEXT,
+                         PRIMARY KEY (user_id, filename))''')
+            conn.commit()
+            print("Table created successfully")
+        
+        # Insert with explicit transaction
+        print("Attempting to save resume...")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute('BEGIN TRANSACTION')
         c.execute('''INSERT OR REPLACE INTO resumes 
-                    (user_id, filename, content, file_type, timestamp) 
+                    (user_id, filename, content, file_type, timestamp)
                     VALUES (?, ?, ?, ?, ?)''',
                  (user_id, filename, content, file_type, timestamp))
-        
-        conn.commit()
+        c.execute('COMMIT')
         
         # Verify the save
         c.execute('SELECT COUNT(*) FROM resumes WHERE user_id = ? AND filename = ?',
@@ -106,13 +126,18 @@ def save_resume(user_id, filename, content, file_type):
         count = c.fetchone()[0]
         print(f"Verify save: found {count} matching records")
         
-        return True
+        return count > 0
+        
     except Exception as e:
-        print(f"Error in save_resume: {str(e)}")  # Debug print
-        st.error(f"Error saving resume: {str(e)}")
+        print(f"Error in save_resume: {str(e)}")
+        if 'conn' in locals():
+            conn.rollback()
         return False
+        
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
+        print("=== End save_resume ===\n")
 
 def get_user_resumes(user_id):
     """Get all resumes for a user"""
