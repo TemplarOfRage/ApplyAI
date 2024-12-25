@@ -6,7 +6,7 @@ Resume processing services for ApplyAI.
 import streamlit as st
 import PyPDF2
 import docx2txt
-from .auth import get_connection
+from app.services.auth import get_connection
 
 def extract_text_from_pdf(pdf_file) -> str:
     """Extract text from a PDF file"""
