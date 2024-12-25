@@ -13,4 +13,4 @@ from .config import (
 
 # You can add any package-level initialization here if needed
 
-# Empty file to make the directory a Python package
+# Empty file to make the directory a package

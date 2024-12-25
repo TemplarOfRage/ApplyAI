@@ -1,9 +1,10 @@
 import streamlit as st
-from utils.file_processing import extract_text_from_pdf
-from utils.db import save_resume
+from app.utils.file_processing import extract_text_from_pdf
+from app.utils.db import save_resume
 
 def render_resume_manager():
     """Component for managing resume uploads and edits"""
+    st.markdown("### Resume Management")
     
     # File uploader that stays at the top
     uploaded_files = st.file_uploader(
