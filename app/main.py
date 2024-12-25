@@ -2,9 +2,9 @@
 Main Streamlit application for ApplyAI.
 """
 import streamlit as st
-from app.components.resume_manager import render_resume_manager
-from app.components.analysis_results import render_analysis_results
-from app.utils.auth import check_auth
+from components.resume_manager import render_resume_manager
+from components.analysis_results import render_analysis_results
+from utils.auth import check_auth
 
 def run():
     """Main app entry point"""
