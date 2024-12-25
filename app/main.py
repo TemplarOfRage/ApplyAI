@@ -141,25 +141,26 @@ def render_resume_section():
         key='resume_uploader'
     )
     
+    # Debug expander
+    with st.expander("🔍 Debug Information", expanded=False):
+        debug_container = st.container()
+    
     if uploaded_files:
         for uploaded_file in uploaded_files:
             try:
-                # Debug info
-                st.write(f"DEBUG - Processing file: {uploaded_file.name}")
-                st.write(f"DEBUG - File type: {uploaded_file.type}")
+                with debug_container:
+                    st.write(f"Processing: {uploaded_file.name}")
+                    st.write(f"File type: {uploaded_file.type}")
                 
-                # Extract text
                 content = extract_text_from_file(uploaded_file)
                 
                 if content:
-                    # If content is a tuple, get the text content
                     if isinstance(content, tuple):
                         content = content[1] if len(content) > 1 else str(content)
                     
-                    st.write(f"DEBUG - Content type: {type(content)}")
-                    st.write(f"DEBUG - Content length: {len(content)}")
+                    with debug_container:
+                        st.write(f"Content length: {len(content)}")
                     
-                    # Save to database using positional arguments
                     if save_resume(
                         st.session_state.user_id,
                         uploaded_file.name,
@@ -167,7 +168,6 @@ def render_resume_section():
                         uploaded_file.type
                     ):
                         st.success(f"Successfully uploaded: {uploaded_file.name}")
-                        # Refresh resumes in session state
                         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
                     else:
                         st.error(f"Failed to save {uploaded_file.name}")
@@ -176,8 +176,63 @@ def render_resume_section():
                     
             except Exception as e:
                 st.error(f"Error processing {uploaded_file.name}: {str(e)}")
-                import traceback
-                st.write("DEBUG - Full error:", traceback.format_exc())
+                with debug_container:
+                    import traceback
+                    st.write("Error details:", traceback.format_exc())
+    
+    # Display uploaded resumes
+    if st.session_state.resumes:
+        st.markdown("### Your Resumes")
+        
+        for idx, (name, content, file_type, created_at, updated_at) in enumerate(st.session_state.resumes):
+            with st.expander(f"📄 {name}", expanded=False):
+                cols = st.columns([3, 1, 1, 1])
+                
+                # File info
+                with cols[0]:
+                    st.markdown(f"**Last updated:** {updated_at.strftime('%Y-%m-%d %H:%M')}")
+                
+                # Edit button
+                if cols[1].button("✏️ Edit", key=f"edit_{idx}"):
+                    st.session_state[f'editing_{idx}'] = True
+                
+                # Download button
+                cols[2].download_button(
+                    "⬇️ Download",
+                    content,
+                    file_name=name,
+                    mime=file_type
+                )
+                
+                # Delete button
+                if cols[3].button("🗑️ Delete", key=f"del_{idx}"):
+                    if delete_resume(st.session_state.user_id, name):
+                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                        st.rerun()
+                
+                # Show content
+                if st.session_state.get(f'editing_{idx}', False):
+                    edited_content = st.text_area(
+                        "Edit Resume Content",
+                        value=content,
+                        height=400,
+                        key=f"content_{idx}"
+                    )
+                    
+                    col1, col2 = st.columns([1, 4])
+                    if col1.button("Save", key=f"save_{idx}"):
+                        if save_resume(st.session_state.user_id, name, edited_content, file_type):
+                            st.session_state[f'editing_{idx}'] = False
+                            st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                            st.success("Changes saved!")
+                            st.rerun()
+                    
+                    if col2.button("Cancel", key=f"cancel_{idx}"):
+                        st.session_state[f'editing_{idx}'] = False
+                        st.rerun()
+                else:
+                    with st.expander("View Content", expanded=False):
+                        st.text(content)
 
 def run():
     """Main entry point for the application"""
