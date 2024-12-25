@@ -143,50 +143,25 @@ def render_resume_section():
     
     if uploaded_files:
         for uploaded_file in uploaded_files:
-            # Check if this file is already uploaded
-            existing_names = [r[0] for r in st.session_state.resumes]
-            if uploaded_file.name not in existing_names:
-                try:
-                    content = extract_text_from_file(uploaded_file)
-                    if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                        st.success(f"Successfully uploaded: {uploaded_file.name}")
-                        # Refresh resumes in session state
-                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-                    else:
-                        st.error(f"Failed to save {uploaded_file.name}")
-                except Exception as e:
-                    st.error(f"Error processing {uploaded_file.name}: {str(e)}")
-            else:
-                st.warning(f"Resume already exists: {uploaded_file.name}")
-    
-    if st.session_state.resumes:
-        for idx, (name, content, file_type, created_at, updated_at) in enumerate(st.session_state.resumes):
-            cols = st.columns([7, 1, 1, 1])
-            
-            with cols[0]:
-                display_name = name if len(name) < 40 else name[:37] + "..."
-                last_updated = updated_at.strftime("%Y-%m-%d %H:%M") if updated_at else "Unknown"
-                st.markdown(f"""
-                    <div class="file-name">
-                        <span class="file-icon">📄</span>
-                        {display_name}
-                        <small style="color: gray; margin-left: 10px;">Last updated: {last_updated}</small>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            # Show analysis history in an expander
-            with st.expander("📊 Analysis History"):
-                history = get_resume_history(st.session_state.user_id, name)
-                if history:
-                    for analysis_date, job_content, result in history:
-                        st.markdown(f"**Analysis from {analysis_date}**")
-                        with st.expander("View Details"):
-                            st.markdown("**Job Description:**")
-                            st.text(job_content)
-                            st.markdown("**Analysis:**")
-                            st.markdown(result)
+            try:
+                # Debug info
+                st.write(f"DEBUG - Processing file: {uploaded_file.name}")
+                st.write(f"DEBUG - File type: {uploaded_file.type}")
+                
+                content = extract_text_from_file(uploaded_file)
+                st.write(f"DEBUG - Extracted content length: {len(content)}")
+                
+                if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
+                    st.success(f"Successfully uploaded: {uploaded_file.name}")
+                    # Refresh resumes in session state
+                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
                 else:
-                    st.info("No analysis history yet")
+                    st.error(f"Failed to save {uploaded_file.name}")
+                    
+            except Exception as e:
+                st.error(f"Error processing {uploaded_file.name}: {str(e)}")
+                import traceback
+                st.write("DEBUG - Full error:", traceback.format_exc())
 
 def run():
     """Main entry point for the application"""

@@ -44,29 +44,87 @@ def save_resume(user_id, filename, content, file_type):
     """Save or update a resume"""
     with get_db() as conn:
         try:
+            # Debug info
+            st.write(f"DEBUG - Saving resume: {filename}")
+            st.write(f"DEBUG - User ID: {user_id}")
+            st.write(f"DEBUG - Content length: {len(content)}")
+            st.write(f"DEBUG - File type: {file_type}")
+            
+            # First, check if table exists
             conn.execute("""
-                INSERT INTO resumes (user_id, filename, content, file_type)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(user_id, filename) 
-                DO UPDATE SET 
-                    content = excluded.content,
-                    file_type = excluded.file_type,
-                    updated_at = CURRENT_TIMESTAMP
-            """, (user_id, filename, content, file_type))
+                CREATE TABLE IF NOT EXISTS resumes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    file_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+            
+            # Check if resume exists
+            existing = conn.execute(
+                "SELECT id FROM resumes WHERE user_id = ? AND filename = ?",
+                (user_id, filename)
+            ).fetchone()
+            
+            if existing:
+                # Update existing resume
+                conn.execute("""
+                    UPDATE resumes 
+                    SET content = ?, 
+                        file_type = ?, 
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ? AND filename = ?
+                """, (content, file_type, user_id, filename))
+                st.write(f"DEBUG - Updated existing resume: {filename}")
+            else:
+                # Insert new resume
+                conn.execute("""
+                    INSERT INTO resumes (user_id, filename, content, file_type)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, filename, content, file_type))
+                st.write(f"DEBUG - Inserted new resume: {filename}")
+            
             return True
+            
         except Exception as e:
-            print(f"Error saving resume: {e}")
+            st.error(f"Database error saving resume {filename}: {str(e)}")
+            # Print full error details
+            import traceback
+            st.write("DEBUG - Full error:", traceback.format_exc())
             return False
 
 def get_user_resumes(user_id):
     """Get all resumes for a user"""
     with get_db() as conn:
-        return conn.execute("""
-            SELECT filename, content, file_type, created_at, updated_at
-            FROM resumes 
-            WHERE user_id = ?
-            ORDER BY updated_at DESC
-        """, (user_id,)).fetchall()
+        try:
+            # Ensure table exists
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS resumes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    file_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+            
+            return conn.execute("""
+                SELECT filename, content, file_type, created_at, updated_at
+                FROM resumes 
+                WHERE user_id = ?
+                ORDER BY updated_at DESC
+            """, (user_id,)).fetchall()
+            
+        except Exception as e:
+            st.error(f"Error getting resumes: {str(e)}")
+            return []
 
 def delete_resume(user_id, filename):
     """Delete a specific resume"""
