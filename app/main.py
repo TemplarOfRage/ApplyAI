@@ -119,25 +119,31 @@ def render_resume_section():
             .resume-table th {
                 font-weight: 500;
                 color: #666;
+                text-align: center;
+            }
+            /* Center align action columns */
+            .stButton {
+                text-align: center;
+                display: flex;
+                justify-content: center;
+            }
+            /* Remove button styling */
+            .stButton > button {
+                background: none;
+                border: none;
+                padding: 0;
+                margin: 0;
+                font-size: 1.2rem;
+            }
+            .stButton > button:hover {
+                background: none;
+                border: none;
             }
             /* File name styles */
             .file-name {
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
-            }
-            /* Edit panel styles */
-            .edit-panel {
-                margin: 0.5rem 0 1rem 3rem;
-                padding: 1rem;
-                background: white;
-                border-radius: 4px;
-                border: 1px solid #eee;
-            }
-            .edit-actions {
-                display: flex;
-                gap: 1rem;
-                margin-top: 1rem;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -146,15 +152,15 @@ def render_resume_section():
     resumes = get_user_resumes(st.session_state.user_id)
     
     if resumes:
-        # Create table header
+        # Create table header with proper column order
         st.markdown("""
             <table class="resume-table">
                 <thead>
                     <tr>
-                        <th style="width: 70%">Name</th>
-                        <th style="width: 10%; text-align: center">Edit</th>
-                        <th style="width: 10%; text-align: center">Delete</th>
-                        <th style="width: 10%; text-align: center">Download</th>
+                        <th style="width: 70%; text-align: left">Name</th>
+                        <th style="width: 10%">Edit</th>
+                        <th style="width: 10%">Download</th>
+                        <th style="width: 10%">Delete</th>
                     </tr>
                 </thead>
             </table>
@@ -175,21 +181,41 @@ def render_resume_section():
                 st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
                 st.rerun()
             
-            # Delete button
-            if cols[2].button("🗑️", key=f"del_{idx}", help="Delete resume"):
-                if delete_resume(st.session_state.user_id, name):
-                    st.rerun()
-            
             # Download button
             file_content = get_resume_file(st.session_state.user_id, name)
             if file_content:
-                cols[3].download_button(
+                cols[2].download_button(
                     "⬇️",
                     file_content,
                     file_name=name,
                     mime=file_type,
                     help="Download resume",
                 )
+            
+            # Delete button with confirmation
+            delete_key = f"delete_{idx}_{hash(name)}"
+            if delete_key not in st.session_state:
+                st.session_state[delete_key] = False
+                
+            if cols[3].button("🗑️", key=f"del_btn_{idx}", help="Delete resume"):
+                st.session_state[delete_key] = True
+                
+            # Show delete confirmation
+            if st.session_state[delete_key]:
+                with st.container():
+                    st.markdown('<div style="margin: 1rem 0 1rem 3rem;">', unsafe_allow_html=True)
+                    st.warning(f"Are you sure you want to delete {name}?")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Yes, delete it", key=f"confirm_del_{idx}", type="primary"):
+                            if delete_resume(st.session_state.user_id, name):
+                                st.session_state[delete_key] = False
+                                st.rerun()
+                    with col2:
+                        if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
+                            st.session_state[delete_key] = False
+                            st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
