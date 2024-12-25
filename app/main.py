@@ -67,12 +67,22 @@ def render_job_posting_section():
     has_job = bool(job_url or job_text)
     has_resume = bool(st.session_state.get('resumes', []))
     
-    # Basic button with just enable/disable
-    st.button(
+    # Button with click handling
+    col1, col2 = st.columns([1, 4])
+    
+    if col1.button(
         "Analyze",
         disabled=not (has_job and has_resume),
-        key="basic_analyze_button"
-    )
+        key="basic_analyze_button",
+        use_container_width=True
+    ):
+        st.info("Button clicked! We'll add analysis functionality next.")
+    
+    # Helper message
+    if not has_resume:
+        col2.info("⚠️ Upload a resume to get started")
+    elif not has_job:
+        col2.info("⚠️ Add a job posting to analyze")
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
