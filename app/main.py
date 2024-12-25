@@ -143,6 +143,35 @@ def render_resume_section():
                 border: none !important;
                 padding: 0.5rem !important;
             }
+            /* Hide expander header completely */
+            .streamlit-expanderHeader {
+                display: none !important;
+            }
+            /* Clean edit panel styling */
+            .edit-panel {
+                background-color: #f8f9fa;
+                padding: 1rem;
+                border-radius: 4px;
+                margin: 0.5rem 0;
+            }
+            /* Text area styling */
+            .stTextArea textarea {
+                font-size: 0.9rem;
+                line-height: 1.5;
+                font-family: monospace;
+            }
+            /* Button container */
+            .button-container {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+            .button-container .stButton {
+                flex: 1;
+            }
+            .button-container .stButton button {
+                width: 100% !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -185,12 +214,35 @@ def render_resume_section():
             # Edit button
             edit_key = f"edit_{idx}_{hash(name)}"
             if cols[2].button("✏️", key=edit_key, help="Edit extracted text"):
-                # Toggle the edit state
-                current_state = st.session_state.get(f"edit_{view_key}", False)
-                st.session_state[f"edit_{view_key}"] = not current_state
-                # Ensure view mode is closed when editing
-                if f"show_{view_key}" in st.session_state:
-                    del st.session_state[f"show_{view_key}"]
+                # Only set edit state, don't auto-expand
+                st.session_state[f"edit_{view_key}"] = True
+            
+            # Show edit panel only if explicitly opened
+            if st.session_state.get(f"edit_{view_key}", False):
+                st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
+                edited_content = st.text_area(
+                    "Edit extracted text:",
+                    value=content,
+                    height=300,
+                    key=f"content_{idx}_{hash(name)}"
+                )
+                
+                # Button container for better alignment
+                st.markdown('<div class="button-container">', unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Save", key=f"save_{idx}_{hash(name)}", 
+                               type="primary"):
+                        update_resume_content(st.session_state.user_id, name, edited_content)
+                        del st.session_state[f"edit_{view_key}"]
+                        st.rerun()
+                with col2:
+                    if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
+                               type="secondary"):
+                        del st.session_state[f"edit_{view_key}"]
+                        st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)  # Close button container
+                st.markdown('</div>', unsafe_allow_html=True)  # Close edit panel
             
             # Delete button
             del_key = f"del_{idx}_{hash(name)}"
@@ -216,27 +268,6 @@ def render_resume_section():
                         st.markdown(pdf_display, unsafe_allow_html=True)
                     else:
                         st.info("Preview not available for this file type")
-            
-            if st.session_state.get(f"edit_{view_key}", False):
-                with st.expander("", expanded=True):
-                    edited_content = st.text_area(
-                        "Edit extracted text:",
-                        value=content,
-                        height=200,
-                        key=f"content_{idx}_{hash(name)}"
-                    )
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Save", key=f"save_{idx}_{hash(name)}", 
-                                   type="primary", use_container_width=True):
-                            update_resume_content(st.session_state.user_id, name, edited_content)
-                            del st.session_state[f"edit_{view_key}"]
-                            st.rerun()
-                    with col2:
-                        if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
-                                   type="secondary", use_container_width=True):
-                            del st.session_state[f"edit_{view_key}"]
-                            st.rerun()
     
     # File uploader section
     st.divider()
