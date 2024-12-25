@@ -1,171 +1,59 @@
-def create_tables():
-    """Create all necessary database tables"""
+import sqlite3
+import streamlit as st
+import os
+
+def get_db():
+    """Get a database connection"""
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'applyai.db')
+    return sqlite3.connect(db_path)
+
+def init_db():
+    """Initialize the database with required tables"""
     with get_db() as conn:
-        # Users table
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                password TEXT NOT NULL
             )
         """)
         
-        # Resumes table with user relationship
         conn.execute("""
             CREATE TABLE IF NOT EXISTS resumes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 content TEXT NOT NULL,
                 file_type TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id),
-                UNIQUE(user_id, filename)
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
         
-        # Analyses table to store analysis history
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS analyses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                resume_id INTEGER NOT NULL,
-                job_content TEXT NOT NULL,
-                analysis_result TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id),
-                FOREIGN KEY (resume_id) REFERENCES resumes(id)
+        # Add test user if it doesn't exist
+        try:
+            conn.execute(
+                "INSERT INTO users (username, password) VALUES (?, ?)",
+                ("test", "test")
             )
-        """)
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # Test user already exists
+            pass
 
 def save_resume(user_id, filename, content, file_type):
-    """Save or update a resume"""
-    with get_db() as conn:
-        try:
-            # First, check if table exists with all required fields
+    """Save or update a resume in the database"""
+    try:
+        with get_db() as conn:
             conn.execute("""
-                CREATE TABLE IF NOT EXISTS resumes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    filename TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    file_type TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id)
-                )
-            """)
-            
-            # Check if resume exists
-            existing = conn.execute(
-                "SELECT id FROM resumes WHERE user_id = ? AND filename = ?",
-                (user_id, filename)
-            ).fetchone()
-            
-            if existing:
-                # Update existing resume
-                conn.execute("""
-                    UPDATE resumes 
-                    SET content = ?, 
-                        file_type = ?, 
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = ? AND filename = ?
-                """, (content, file_type, user_id, filename))
-            else:
-                # Insert new resume
-                conn.execute("""
-                    INSERT INTO resumes (
-                        user_id, filename, content, file_type, 
-                        created_at, updated_at
-                    ) VALUES (
-                        ?, ?, ?, ?, 
-                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                    )
-                """, (user_id, filename, content, file_type))
-            
-            return True
-            
-        except Exception as e:
-            st.error(f"Database error saving resume {filename}: {str(e)}")
-            return False
-
-def get_user_resumes(user_id):
-    """Get all resumes for a user"""
-    with get_db() as conn:
-        try:
-            # Ensure table exists with all fields
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS resumes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    filename TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    file_type TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id)
-                )
-            """)
-            
-            # Query all fields explicitly
-            return conn.execute("""
-                SELECT 
-                    filename,
-                    content,
-                    file_type,
-                    datetime(created_at) as created_at,
-                    datetime(updated_at) as updated_at
-                FROM resumes 
-                WHERE user_id = ?
-                ORDER BY updated_at DESC
-            """, (user_id,)).fetchall()
-            
-        except Exception as e:
-            st.error(f"Error getting resumes: {str(e)}")
-            return []
-
-def delete_resume(user_id, filename):
-    """Delete a specific resume"""
-    with get_db() as conn:
-        try:
-            conn.execute("""
-                DELETE FROM resumes 
-                WHERE user_id = ? AND filename = ?
-            """, (user_id, filename))
-            return True
-        except Exception as e:
-            print(f"Error deleting resume: {e}")
-            return False
-
-def get_resume_history(user_id, filename):
-    """Get analysis history for a specific resume"""
-    with get_db() as conn:
-        return conn.execute("""
-            SELECT a.created_at, a.job_content, a.analysis_result
-            FROM analyses a
-            JOIN resumes r ON a.resume_id = r.id
-            WHERE r.user_id = ? AND r.filename = ?
-            ORDER BY a.created_at DESC
-        """, (user_id, filename)).fetchall()
-
-def save_analysis(user_id, filename, job_content, analysis_result):
-    """Save an analysis result"""
-    with get_db() as conn:
-        try:
-            # Get resume_id
-            resume_id = conn.execute("""
-                SELECT id FROM resumes
-                WHERE user_id = ? AND filename = ?
-            """, (user_id, filename)).fetchone()[0]
-            
-            # Save analysis
-            conn.execute("""
-                INSERT INTO analyses (user_id, resume_id, job_content, analysis_result)
+                INSERT OR REPLACE INTO resumes (user_id, filename, content, file_type)
                 VALUES (?, ?, ?, ?)
-            """, (user_id, resume_id, job_content, analysis_result))
+            """, (user_id, filename, content, file_type))
             return True
-        except Exception as e:
-            print(f"Error saving analysis: {e}")
-            return False 
+    except Exception as e:
+        st.error(f"Error saving resume: {str(e)}")
+        return False
+
+# Initialize database when module is loaded
+init_db() 
