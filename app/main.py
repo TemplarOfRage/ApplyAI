@@ -174,13 +174,10 @@ def render_analysis_history():
 
 def run():
     """Main entry point for the application"""
-    # Initialize session state
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = str(uuid.uuid4())
-    
-    # Initialize configuration
-    init_streamlit_config()
-    
+    # Check authentication first
+    if not check_authentication():
+        return
+        
     st.title("ApplyAI")
     
     # Create a fixed container for the entire layout
@@ -195,6 +192,64 @@ def run():
         # Resume section in scrollable container
         with resume_col:
             render_resume_section()
+
+def check_authentication():
+    """Check if user is authenticated"""
+    if 'user_id' not in st.session_state:
+        # Check if default admin exists
+        with get_connection() as conn:
+            c = conn.cursor()
+            c.execute('SELECT id FROM users WHERE username = ?', (st.secrets["USERNAME"],))
+            if not c.fetchone():
+                # Create default admin user
+                create_user(st.secrets["USERNAME"], st.secrets["PASSWORD"])
+        
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            st.title("Login")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                if st.button("Login", type="primary"):
+                    user_id = authenticate_user(username, password)
+                    if user_id:
+                        st.session_state.user_id = user_id
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
+            
+            with col4:
+                if st.button("Register"):
+                    if username and password:
+                        user_id = create_user(username, password)
+                        if user_id:
+                            st.session_state.user_id = user_id
+                            st.success("Registration successful!")
+                            st.rerun()
+                        else:
+                            st.error("Username already exists")
+                    else:
+                        st.error("Please provide username and password")
+        
+        with col2:
+            st.title("Welcome to ApplyAI")
+            st.markdown("""
+                #### Your AI-Powered Job Application Assistant
+                
+                Transform your job search with intelligent application analysis:
+                
+                🎯 **Smart Job Fit Analysis**  
+                ✨ **Custom Resume Tailoring**  
+                💡 **Strategic Insights**  
+                📝 **Application Assistance**  
+                
+                Start your smarter job search today!
+            """)
+        return False
+    return True
 
 def render_sidebar():
     """Render the configuration sidebar"""
