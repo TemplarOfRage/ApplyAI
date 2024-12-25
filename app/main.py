@@ -20,6 +20,7 @@ import os
 from utils.analyze import analyze_resume_for_job
 from utils.errors import AnalysisError
 from components.analysis_results import render_analysis_results
+from utils.file_processing import extract_text_from_pdf
 
 def render_analyze_button(job_url, job_text, custom_questions):
     """Separate function just for the analyze button"""
