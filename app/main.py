@@ -141,22 +141,23 @@ def render_resume_section():
     resumes = get_user_resumes(st.session_state.user_id)
     
     if resumes:
-        # Create table header
+        # Update table header to include Download column
         st.markdown("""
             <table class="resume-table">
                 <thead>
                     <tr>
-                        <th style="width: 70%">Name</th>
+                        <th style="width: 60%">Name</th>
                         <th style="width: 10%; text-align: center">View</th>
                         <th style="width: 10%; text-align: center">Edit</th>
                         <th style="width: 10%; text-align: center">Delete</th>
+                        <th style="width: 10%; text-align: center">Download</th>
                     </tr>
                 </thead>
             </table>
         """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
-            cols = st.columns([7, 1, 1, 1])
+            cols = st.columns([6, 1, 1, 1, 1])
             
             # Truncate filename if too long
             display_name = name if len(name) < 40 else name[:37] + "..."
@@ -169,19 +170,31 @@ def render_resume_section():
             view_state_key = f"view_state_{idx}_{hash(name)}"
             
             if cols[1].button("👁️", key=view_btn_key, help="View original file"):
-                # Toggle view state
                 current_state = st.session_state.view_states.get(view_state_key, False)
                 st.session_state.view_states[view_state_key] = not current_state
                 st.rerun()
             
-            # Edit and Delete buttons
+            # Edit button
             edit_btn_key = f"edit_btn_{idx}_{hash(name)}"
             if cols[2].button("✏️", key=edit_btn_key, help="Edit extracted text"):
                 st.session_state[f"edit_{idx}"] = True
             
+            # Delete button
             if cols[3].button("🗑️", key=f"del_{idx}_{hash(name)}", help="Delete resume"):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
+            
+            # Download button
+            if cols[4].button("⬇️", key=f"download_{idx}_{hash(name)}", help="Download resume"):
+                file_content = get_resume_file(st.session_state.user_id, name)
+                if file_content:
+                    st.download_button(
+                        "Download",
+                        file_content,
+                        file_name=name,
+                        mime=file_type,
+                        key=f"actual_download_{idx}_{hash(name)}",
+                    )
             
             # Show file preview only if explicitly requested
             if st.session_state.view_states.get(view_state_key, False):
@@ -194,14 +207,18 @@ def render_resume_section():
                             del st.session_state.view_states[view_state_key]
                             st.rerun()
                         
-                        # Display PDF using a download button for now
-                        st.download_button(
-                            "📄 Open PDF",
-                            file_content,
-                            file_name=name,
-                            mime="application/pdf",
-                            key=f"download_{idx}_{hash(name)}"
-                        )
+                        # Try to display PDF inline (we can work on this more)
+                        import base64
+                        b64_pdf = base64.b64encode(file_content).decode('utf-8')
+                        pdf_display = f'''
+                            <iframe
+                                src="data:application/pdf;base64,{b64_pdf}#zoom=FitH"
+                                width="100%"
+                                height="600px"
+                                style="border: none;"
+                            ></iframe>
+                        '''
+                        st.markdown(pdf_display, unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Error displaying PDF: {str(e)}")
                 else:
