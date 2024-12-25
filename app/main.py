@@ -52,22 +52,67 @@ def render_analyze_button(job_url, job_text, custom_questions):
                 st.error(f"Error: {str(e)}")
 
 def render_job_posting_section():
-    # Job inputs
-    job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
-    job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
+    # Initialize session state for job data if not exists
+    if 'job_url' not in st.session_state:
+        st.session_state.job_url = ''
+    if 'job_text' not in st.session_state:
+        st.session_state.job_text = ''
+    if 'custom_questions' not in st.session_state:
+        st.session_state.custom_questions = ''
+
+    # THE BUTTON GOES FIRST - BEFORE ANYTHING ELSE
+    has_job = bool(st.session_state.job_url or st.session_state.job_text)
+    has_resume = bool(st.session_state.get('resumes', []))
+    
+    col1, col2 = st.columns([1, 4])
+    
+    analyze_clicked = col1.button(
+        "Analyze",
+        key="analyze_button_first",
+        disabled=not (has_job and has_resume),
+        type="primary",
+        use_container_width=True
+    )
+    
+    if not has_resume:
+        col2.info("⚠️ Upload a resume to get started")
+    elif not has_job:
+        col2.info("⚠️ Add a job posting to analyze")
+
+    # Now the inputs - updating session state
+    st.session_state.job_url = st.text_input(
+        "Job Posting URL",
+        value=st.session_state.job_url,
+        placeholder="Paste a job posting URL here (optional)"
+    )
+    
+    st.session_state.job_text = st.text_area(
+        "Or paste job posting text",
+        value=st.session_state.job_text,
+        placeholder="Paste the job description here to analyze it..."
+    )
     
     with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
-        custom_questions = st.text_area(
+        st.session_state.custom_questions = st.text_area(
             "Add any custom application questions",
+            value=st.session_state.custom_questions,
             placeholder="Enter each question on a new line...",
             help="These questions will be analyzed along with your resume"
         )
 
-    # Add some space
-    st.markdown("---")
-    
-    # Render the button separately
-    render_analyze_button(job_url, job_text, custom_questions)
+    # Handle analysis
+    if analyze_clicked and has_job and has_resume:
+        with st.spinner("Analyzing..."):
+            try:
+                resume = st.session_state.resumes[0]
+                response = analyze_resume_for_job(
+                    resume[1],
+                    f"{st.session_state.job_url}\n\n{st.session_state.job_text}\n\n{st.session_state.custom_questions}"
+                )
+                st.session_state['analysis_results'] = response
+                st.success("Analysis complete!")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
     # Show results if available
     if 'analysis_results' in st.session_state:
