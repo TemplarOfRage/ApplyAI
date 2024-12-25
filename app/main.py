@@ -138,29 +138,66 @@ def truncate_filename(filename, max_length=30):
     return name[:max_length-5] + '...' + ext
 
 def render_resume_section():
+    # File uploader with clearer instructions
+    st.markdown("### Upload Resume")
+    st.markdown("Upload your resume to extract and edit its content.")
+    
     uploaded_file = st.file_uploader(
-        "Upload PDF Resume",
+        "",  # Remove label since we have the header above
         type=['pdf'],
-        key='pdf_uploader'
+        key='pdf_uploader',
+        help="Currently supporting PDF files only"
     )
     
     if uploaded_file:
-        text = extract_text_from_pdf(uploaded_file)
-        if text:
-            st.success(f"Successfully extracted {len(text)} characters")
-            
-            # Show the full text in an expander
-            with st.expander("View Full Text"):
-                st.text_area("Extracted Content", text, height=300)
+        with st.status(f"Processing {uploaded_file.name}...", expanded=True) as status:
+            text = extract_text_from_pdf(uploaded_file)
+            if text:
+                status.update(label="✅ Text extracted successfully!", state="complete")
                 
-                if st.button("Save to Database"):
-                    if save_resume(
-                        st.session_state.user_id,
-                        uploaded_file.name,
-                        text,
-                        uploaded_file.type
-                    ):
-                        st.success("Saved to database!")
+                # Two-column layout for actions
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Preview in modal
+                    if st.button("📄 Preview Content"):
+                        st.info("Preview of extracted text:")
+                        st.code(text[:500] + "..." if len(text) > 500 else text)
+                
+                with col2:
+                    # Save button with better feedback
+                    if st.button("💾 Save to Database"):
+                        with st.spinner("Saving..."):
+                            if save_resume(
+                                st.session_state.user_id,
+                                uploaded_file.name,
+                                text,
+                                uploaded_file.type
+                            ):
+                                st.toast("✅ Resume saved successfully!")
+                            else:
+                                st.error("Failed to save resume")
+                
+                # Edit option
+                if st.checkbox("✏️ Edit content before saving"):
+                    edited_text = st.text_area(
+                        "Edit extracted text",
+                        value=text,
+                        height=400
+                    )
+                    if st.button("💾 Save edited version"):
+                        with st.spinner("Saving edited version..."):
+                            if save_resume(
+                                st.session_state.user_id,
+                                uploaded_file.name,
+                                edited_text,
+                                uploaded_file.type
+                            ):
+                                st.toast("✅ Edited resume saved successfully!")
+                            else:
+                                st.error("Failed to save edited resume")
+            else:
+                status.update(label="❌ Failed to extract text", state="error")
 
 def run():
     """Main entry point for the application"""
