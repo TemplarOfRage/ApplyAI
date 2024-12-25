@@ -175,7 +175,14 @@ def render_resume_section():
         # Show stored resumes and their stats
         stored_resumes = get_user_resumes(st.session_state.user_id)
         if stored_resumes:
-            for idx, (name, content, file_type, created_at, updated_at) in enumerate(stored_resumes):
+            for idx, resume_data in enumerate(stored_resumes):
+                # Safely unpack resume data with defaults
+                name = resume_data[0] if len(resume_data) > 0 else "Untitled"
+                content = resume_data[1] if len(resume_data) > 1 else ""
+                file_type = resume_data[2] if len(resume_data) > 2 else "text/plain"
+                created_at = resume_data[3] if len(resume_data) > 3 else "Unknown"
+                updated_at = resume_data[4] if len(resume_data) > 4 else "Unknown"
+                
                 with st.container():
                     col1, col2, col3 = st.columns([3, 1, 1])
                     

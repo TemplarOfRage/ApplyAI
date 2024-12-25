@@ -109,11 +109,14 @@ def get_user_resumes(user_id):
                 )
             """)
             
-            # Query all fields
+            # Query all fields explicitly
             return conn.execute("""
-                SELECT filename, content, file_type, 
-                       datetime(created_at) as created_at, 
-                       datetime(updated_at) as updated_at
+                SELECT 
+                    filename,
+                    content,
+                    file_type,
+                    datetime(created_at) as created_at,
+                    datetime(updated_at) as updated_at
                 FROM resumes 
                 WHERE user_id = ?
                 ORDER BY updated_at DESC
