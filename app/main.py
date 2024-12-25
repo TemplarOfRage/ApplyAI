@@ -141,6 +141,10 @@ def render_resume_section():
     if 'resumes' not in st.session_state:
         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
     
+    # Initialize upload tracking if not exists
+    if 'last_uploaded_files' not in st.session_state:
+        st.session_state.last_uploaded_files = set()
+    
     uploaded_files = st.file_uploader(
         "Upload Resume(s)",
         type=['pdf', 'docx', 'txt'],
@@ -166,39 +170,46 @@ def render_resume_section():
         debug_container = st.container()
     
     if uploaded_files:
+        current_files = {f.name for f in uploaded_files}
+        new_files = current_files - st.session_state.last_uploaded_files
+        
         for uploaded_file in uploaded_files:
-            try:
-                with debug_container:
-                    st.markdown(f"<p class='debug-text'>Processing: {uploaded_file.name}</p>", unsafe_allow_html=True)
-                    st.markdown(f"<p class='debug-text'>File type: {uploaded_file.type}</p>", unsafe_allow_html=True)
-                
-                content = extract_text_from_file(uploaded_file)
-                
-                if content:
-                    if isinstance(content, tuple):
-                        content = content[1] if len(content) > 1 else str(content)
-                    
+            if uploaded_file.name in new_files:  # Only process new files
+                try:
                     with debug_container:
-                        st.markdown(f"<p class='debug-text'>Content length: {len(content)}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p class='debug-text'>Processing: {uploaded_file.name}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p class='debug-text'>File type: {uploaded_file.type}</p>", unsafe_allow_html=True)
                     
-                    if save_resume(
-                        st.session_state.user_id,
-                        uploaded_file.name,
-                        content,
-                        uploaded_file.type
-                    ):
-                        st.toast(f"✅ Successfully uploaded: {uploaded_file.name}", icon="✅")
-                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                    content = extract_text_from_file(uploaded_file)
+                    
+                    if content:
+                        if isinstance(content, tuple):
+                            content = content[1] if len(content) > 1 else str(content)
+                        
+                        with debug_container:
+                            st.markdown(f"<p class='debug-text'>Content length: {len(content)}</p>", unsafe_allow_html=True)
+                        
+                        if save_resume(
+                            st.session_state.user_id,
+                            uploaded_file.name,
+                            content,
+                            uploaded_file.type
+                        ):
+                            st.toast(f"✅ Successfully uploaded: {uploaded_file.name}", icon="✅")
+                            st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                        else:
+                            st.toast(f"❌ Failed to save {uploaded_file.name}", icon="❌")
                     else:
-                        st.toast(f"❌ Failed to save {uploaded_file.name}", icon="❌")
-                else:
-                    st.toast(f"❌ No content extracted from {uploaded_file.name}", icon="❌")
-                    
-            except Exception as e:
-                st.toast(f"❌ Error processing {uploaded_file.name}", icon="❌")
-                with debug_container:
-                    import traceback
-                    st.markdown(f"<p class='debug-text'>Error details: {traceback.format_exc()}</p>", unsafe_allow_html=True)
+                        st.toast(f"❌ No content extracted from {uploaded_file.name}", icon="❌")
+                        
+                except Exception as e:
+                    st.toast(f"❌ Error processing {uploaded_file.name}", icon="❌")
+                    with debug_container:
+                        import traceback
+                        st.markdown(f"<p class='debug-text'>Error details: {traceback.format_exc()}</p>", unsafe_allow_html=True)
+        
+        # Update the set of known files
+        st.session_state.last_uploaded_files = current_files
 
 def run():
     """Main entry point for the application"""
