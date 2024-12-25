@@ -4,7 +4,7 @@ Main Streamlit application for ApplyAI.
 import streamlit as st
 import anthropic
 from app.services.auth import check_authentication, logout
-from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file
+from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file, init_database
 from app.services.analysis import save_analysis, get_user_analysis_history, analyze_job_posting, extract_text_from_url
 from app.config import init_streamlit_config, get_api_key, render_config_sidebar
 
@@ -60,51 +60,36 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
+        # Initialize database on startup
+        init_database()
+        
         uploaded_file = st.file_uploader(
             "Upload Resume",
             type=["pdf", "docx", "txt"],
             key="resume_uploader"
         )
         
-        # Debug prints
-        print("\n=== File Upload Status ===")
-        print(f"File uploaded: {uploaded_file is not None}")
-        if uploaded_file:
-            print(f"File name: {uploaded_file.name}")
-            print(f"File type: {uploaded_file.type}")
-            print(f"File size: {uploaded_file.size}")
-        
-        if uploaded_file:
+        if uploaded_file is not None:
+            print(f"\n=== Processing Upload: {uploaded_file.name} ===")
             try:
-                # Process the file
-                if uploaded_file.size <= 5 * 1024 * 1024:  # 5MB limit
-                    content = extract_text_from_file(uploaded_file)
-                    print(f"Extracted content length: {len(content) if content else 'None'}")
-                    
-                    if content:
-                        # Try to save and handle the result
-                        save_success = save_resume(
-                            user_id=st.session_state.user_id,
-                            filename=uploaded_file.name,
-                            content=content,
-                            file_type=uploaded_file.type
-                        )
-                        
-                        print(f"Save attempt result: {save_success}")
-                        
-                        if save_success:
-                            # Clear the uploader
-                            st.session_state.resume_uploader = None
-                            print("Triggering rerun after successful save")
-                            st.rerun()
-                        else:
-                            print("Failed to save resume")
+                content = extract_text_from_file(uploaded_file)
+                if content:
+                    success = save_resume(
+                        st.session_state.user_id,
+                        uploaded_file.name,
+                        content,
+                        uploaded_file.type
+                    )
+                    if success:
+                        print("Resume saved successfully")
+                        # Clear the uploader and force refresh
+                        uploaded_file = None
+                        st.session_state.pop('resume_uploader', None)
+                        st.rerun()
                     else:
-                        print("Failed to extract content from file")
-                else:
-                    st.error("File size too large. Please upload a file smaller than 5MB.")
+                        print("Failed to save resume")
             except Exception as e:
-                print(f"Error in file processing: {str(e)}")
+                print(f"Error processing upload: {str(e)}")
         
         st.divider()
         render_saved_resumes()
