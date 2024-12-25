@@ -5,21 +5,26 @@ from .errors import AnalysisError
 def analyze_resume_for_job(resumes, job_content):
     """Analyze multiple resumes against a job posting"""
     try:
+        # Debug the resume data
+        st.write("DEBUG - Resume data type:", type(resumes))
+        st.write("DEBUG - Resume data:", resumes)
+        
         client = Anthropic(api_key=st.secrets['ANTHROPIC_API_KEY'])
         
-        # Safely handle resume data
+        # Handle single resume case
+        if not isinstance(resumes, list):
+            resumes = [resumes]
+        
+        # Build resume context
         resume_context = ""
         for idx, resume_data in enumerate(resumes):
-            # Check if resume_data is a tuple with at least 2 elements
-            if isinstance(resume_data, (tuple, list)) and len(resume_data) >= 2:
-                name = resume_data[0]
-                content = resume_data[1]
-                resume_context += f"\nResume {idx + 1} - {name}:\n{content}\n"
-            else:
-                st.warning(f"Skipping malformed resume data at index {idx}")
-        
-        if not resume_context:
-            raise AnalysisError("No valid resume data found")
+            st.write(f"DEBUG - Processing resume {idx}:", resume_data)
+            
+            # Extract name and content
+            name = resume_data[0] if isinstance(resume_data, (tuple, list)) else "Resume"
+            content = resume_data[1] if isinstance(resume_data, (tuple, list)) else str(resume_data)
+            
+            resume_context += f"\nResume {idx + 1} - {name}:\n{content}\n"
         
         prompt = f"""
         As an AI career advisor, analyze these resumes against the job posting and provide detailed feedback.
@@ -55,8 +60,6 @@ def analyze_resume_for_job(resumes, job_content):
         • [Improvement 2]
         • [Improvement 3]
         ===============================
-
-        Finally, if there are multiple resumes, provide a comparison and recommendation for which resume is best suited for this position.
         """
         
         response = client.messages.create(
