@@ -7,6 +7,7 @@ import streamlit as st
 from datetime import datetime
 import sqlite3
 from app.config import get_api_key
+from .auth import get_connection
 
 def extract_text_from_url(url):
     """Extract text content from a URL"""
@@ -83,51 +84,25 @@ def init_analysis_db():
     finally:
         conn.close()
 
-def save_analysis(user_id, job_post, analysis):
-    """Save analysis to database"""
-    try:
-        # Ensure database is initialized
-        init_analysis_db()
-        
-        conn = sqlite3.connect('applyai.db')
+def save_analysis(user_id: str, job_post: str, analysis: str):
+    """Save an analysis to the database"""
+    with get_connection() as conn:
         c = conn.cursor()
-        
-        # Insert analysis
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute('INSERT INTO analysis_history VALUES (?, ?, ?, ?)',
-                 (user_id, job_post, analysis, timestamp))
-        
+        c.execute('''INSERT INTO analysis_history 
+                     (user_id, job_post, analysis, created_at)
+                     VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
+                 (user_id, job_post, analysis))
         conn.commit()
-        return True
-    except Exception as e:
-        st.error(f"Error saving analysis: {str(e)}")
-        return False
-    finally:
-        conn.close()
 
-def get_user_analysis_history(user_id):
+def get_user_analysis_history(user_id: str):
     """Get analysis history for a user"""
-    try:
-        # Ensure database is initialized
-        init_analysis_db()
-        
-        conn = sqlite3.connect('applyai.db')
+    with get_connection() as conn:
         c = conn.cursor()
-        
-        try:
-            c.execute('SELECT job_post, analysis, timestamp FROM analysis_history WHERE user_id = ? ORDER BY timestamp DESC',
-                     (user_id,))
-            return c.fetchall()
-        except sqlite3.OperationalError:
-            # If there's a database error, return empty list instead of showing error
-            return []
-            
-    except Exception as e:
-        # Log the error but don't show it to the user
-        print(f"Error fetching analysis history: {str(e)}")
-        return []
-    finally:
-        conn.close()
+        c.execute('''SELECT job_post, analysis, created_at 
+                    FROM analysis_history 
+                    WHERE user_id = ?
+                    ORDER BY created_at DESC''', (user_id,))
+        return c.fetchall()
 
 def delete_analysis(user_id, timestamp):
     """Delete an analysis from storage"""

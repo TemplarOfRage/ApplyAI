@@ -6,17 +6,11 @@ import streamlit as st
 import os
 
 def init_streamlit_config():
-    """Initialize Streamlit configuration settings"""
+    """Initialize Streamlit configuration"""
     st.set_page_config(
         page_title="ApplyAI",
         page_icon="🎯",
-        layout="wide",
-        initial_sidebar_state="expanded",
-        menu_items={
-            'Get Help': None,
-            'Report a bug': None,
-            'About': None
-        }
+        layout="wide"
     )
     
     # Add security headers and minimal CSS
