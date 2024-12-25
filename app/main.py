@@ -17,6 +17,7 @@ import anthropic
 import base64
 import tempfile
 import os
+from utils.analyze import analyze_resume_for_job
 
 def render_analyze_button(job_url, job_text, custom_questions):
     """Separate function just for the analyze button"""
@@ -67,7 +68,7 @@ def render_job_posting_section():
     has_job = bool(job_url or job_text)
     has_resume = bool(st.session_state.get('resumes', []))
     
-    # Button with click handling
+    # Button with analysis
     col1, col2 = st.columns([1, 4])
     
     if col1.button(
@@ -76,13 +77,39 @@ def render_job_posting_section():
         key="basic_analyze_button",
         use_container_width=True
     ):
-        st.info("Button clicked! We'll add analysis functionality next.")
+        if has_job and has_resume:
+            with st.spinner("Analyzing your resume against the job posting..."):
+                try:
+                    # Get the first resume
+                    resume = st.session_state.resumes[0]
+                    resume_content = resume[1]  # Get content from tuple
+                    
+                    # Combine job content
+                    job_content = job_text
+                    if job_url:
+                        job_content = f"URL: {job_url}\n\n{job_content}"
+                    if custom_questions:
+                        job_content += f"\n\nCustom Questions:\n{custom_questions}"
+                    
+                    # Get analysis
+                    response = analyze_resume_for_job(resume_content, job_content)
+                    
+                    # Store and display results
+                    st.session_state['analysis_results'] = response
+                    st.success("Analysis complete!")
+                except Exception as e:
+                    st.error(f"Error during analysis: {str(e)}")
     
     # Helper message
     if not has_resume:
         col2.info("⚠️ Upload a resume to get started")
     elif not has_job:
         col2.info("⚠️ Add a job posting to analyze")
+    
+    # Show results if available
+    if 'analysis_results' in st.session_state:
+        st.markdown("### Analysis Results")
+        st.markdown(st.session_state.analysis_results)
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
