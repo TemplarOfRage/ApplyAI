@@ -65,20 +65,7 @@ def render_resume_section(col2):
                 
                 .resume-actions {
                     display: flex;
-                    gap: 0.5rem;
-                }
-                
-                .icon-button {
-                    background: none;
-                    border: none;
-                    cursor: pointer;
-                    padding: 0.3rem;
-                    border-radius: 4px;
-                    transition: background-color 0.2s;
-                }
-                
-                .icon-button:hover {
-                    background-color: #f0f2f6;
+                    gap: 1rem;
                 }
                 
                 /* Hide file uploader elements when file is selected */
@@ -101,28 +88,20 @@ def render_resume_section(col2):
         else:
             # Show existing resumes first
             for name, content, file_type in resumes:
-                st.markdown(f"""
-                    <div class="resume-item">
-                        <div class="resume-name">📄 {name}</div>
-                        <div class="resume-actions">
-                            <button class="icon-button" title="View Resume" 
-                                    onclick="document.getElementById('view_{name}').click()">
-                                👁️
-                            </button>
-                            <button class="icon-button" title="Delete Resume" 
-                                    onclick="document.getElementById('del_{name}').click()">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Hidden buttons for functionality
-                if st.button("", key=f"view_{name}", help="View resume"):
-                    st.session_state[f"show_{name}"] = True
-                if st.button("", key=f"del_{name}", help="Delete resume"):
-                    if delete_resume(st.session_state.user_id, name):
-                        st.rerun()
+                with st.container():
+                    cols = st.columns([6, 1, 1])
+                    
+                    # Resume name
+                    cols[0].markdown(f"📄 {name}")
+                    
+                    # View button
+                    if cols[1].button("👁️", key=f"view_{name}", help="View resume"):
+                        st.session_state[f"show_{name}"] = True
+                    
+                    # Delete button
+                    if cols[2].button("🗑️", key=f"del_{name}", help="Delete resume"):
+                        if delete_resume(st.session_state.user_id, name):
+                            st.rerun()
                 
                 # Show content if requested
                 if st.session_state.get(f"show_{name}", False):
@@ -152,7 +131,7 @@ def render_resume_section(col2):
                     st.rerun()
             except Exception as e:
                 st.error("Failed to process resume. Please try again.")
-                print(f"Error uploading resume: {str(e)}")  # For debugging
+                print(f"Error uploading resume: {str(e)}")
 
 def render_analysis_history():
     """Render analysis history section"""
