@@ -197,6 +197,42 @@ def render_resume_section():
                 background-color: #f0f2f6 !important;
                 color: #444 !important;
             }
+            /* Delete confirmation dialog */
+            .delete-confirm-box {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 12px;
+                margin: 8px 0;
+                background: white;
+                width: 100%;
+            }
+            .delete-confirm-text {
+                margin-bottom: 16px;
+                color: #333;
+                font-size: 14px;
+            }
+            .delete-confirm-buttons {
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+            /* Override Streamlit's button styles */
+            .delete-confirm-buttons .stButton > button {
+                padding: 4px 12px !important;
+                border-radius: 4px !important;
+                font-size: 14px !important;
+                min-height: 32px !important;
+            }
+            .delete-button .stButton > button {
+                background-color: #ff4b4b !important;
+                color: white !important;
+                border: none !important;
+            }
+            .cancel-button .stButton > button {
+                background-color: #f0f2f6 !important;
+                color: #333 !important;
+                border: 1px solid #ddd !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -253,24 +289,30 @@ def render_resume_section():
             
             # Show delete confirmation if this is the file being deleted
             if st.session_state.delete_confirmation == name:
-                st.markdown(
-                    f"""
-                    <div class="delete-confirm">
-                        <p>Are you sure you want to delete {name}?</p>
+                st.markdown("""
+                    <div class="delete-confirm-box">
+                        <div class="delete-confirm-text">
+                            Are you sure you want to delete this file?
+                        </div>
                     </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-                col1, col2 = st.columns([1, 1])
+                """, unsafe_allow_html=True)
+                
+                # Use columns for button alignment
+                _, col1, col2 = st.columns([3, 1, 1])
                 with col1:
-                    if st.button("Delete", key=f"confirm_del_{idx}", type="primary"):
+                    st.markdown('<div class="cancel-button">', unsafe_allow_html=True)
+                    if st.button("Cancel", key=f"cancel_del_{idx}"):
+                        st.session_state.delete_confirmation = None
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown('<div class="delete-button">', unsafe_allow_html=True)
+                    if st.button("Delete", key=f"confirm_del_{idx}"):
                         if delete_resume(st.session_state.user_id, name):
                             st.session_state.delete_confirmation = None
                             st.rerun()
-                with col2:
-                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
-                        st.session_state.delete_confirmation = None
-                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
