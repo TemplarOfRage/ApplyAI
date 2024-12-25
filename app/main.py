@@ -29,11 +29,9 @@ def render_job_analysis_section(col1):
         has_resume = bool(resumes)
         has_job_post = bool(url_input or job_post)
         
-        # Show analyze button with appropriate state
-        if not has_resume:
-            st.warning("⚠️ Please upload a resume first to enable analysis")
-        if not has_job_post:
-            st.info("ℹ️ Please provide a job posting to analyze")
+        # Show single consolidated message if either requirement is missing
+        if not (has_resume and has_job_post):
+            st.warning("⚠️ Please upload a resume & job posting to begin an analysis")
             
         analyze_button = st.button(
             "Analyze",
@@ -151,10 +149,10 @@ def render_resume_section(col2):
                                         uploaded_file.name, 
                                         content, 
                                         uploaded_file.type):
-                    st.session_state.resume_uploader = None
                     st.rerun()
             except Exception as e:
-                st.error(f"Error uploading resume: {str(e)}")
+                st.error("Failed to process resume. Please try again.")
+                print(f"Error uploading resume: {str(e)}")  # For debugging
 
 def render_analysis_history():
     """Render analysis history section"""
