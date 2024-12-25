@@ -139,29 +139,31 @@ def render_resume_section():
                 margin: 0 !important;
                 box-shadow: none !important;
             }
-            /* Delete confirmation dialog */
+            /* Delete confirmation styles */
             .delete-confirm {
-                margin: 0.5rem 3rem;
-                padding: 0.75rem;
-                background: #f8f9fa;
-                border: 1px solid #eee;
+                background: white;
+                border: 1px solid #ddd;
                 border-radius: 4px;
-            }
-            .delete-confirm p {
-                margin: 0 0 0.5rem 0;
-                font-size: 0.9rem;
-                color: #444;
+                padding: 12px;
+                margin: 8px 0;
+                width: fit-content;
             }
             .delete-buttons {
                 display: flex;
-                justify-content: flex-end;
-                gap: 0.5rem;
+                gap: 12px;
+                margin-top: 12px;
             }
             .delete-buttons button {
-                font-size: 0.9rem !important;
-                padding: 0.25rem 0.75rem !important;
-                border-radius: 4px !important;
-                min-height: 0 !important;
+                min-height: 32px !important;
+                padding: 4px 12px !important;
+            }
+            .delete-button button {
+                background-color: #ff4b4b !important;
+                color: white !important;
+            }
+            .cancel-button button {
+                background-color: #f0f2f6 !important;
+                color: #333 !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -217,27 +219,37 @@ def render_resume_section():
                     mime=file_type,
                 )
             
+            # Delete confirmation
+            delete_key = f"delete_{idx}_{hash(name)}"
+            
             # Delete button
             if cols[3].button("🗑️", key=f"del_btn_{idx}"):
-                st.session_state.delete_confirmation = name
+                st.session_state[delete_key] = True
             
-            # Show delete confirmation only when explicitly requested
-            if st.session_state.delete_confirmation == name:
-                st.markdown('<div class="delete-confirm">', unsafe_allow_html=True)
-                st.markdown('<p>Are you sure you want to delete this file?</p>', unsafe_allow_html=True)
-                
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
-                        st.session_state.delete_confirmation = None
-                        st.rerun()
-                with col2:
-                    if st.button("Delete", key=f"confirm_del_{idx}", type="primary"):
-                        if delete_resume(st.session_state.user_id, name):
-                            st.session_state.delete_confirmation = None
+            # Show delete confirmation
+            if st.session_state.get(delete_key, False):
+                with st.container():
+                    st.markdown(
+                        f"""
+                        <div class="delete-confirm">
+                            <div>Are you sure you want to delete this file?</div>
+                            <div class="delete-buttons">
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Cancel", key=f"cancel_{idx}", type="secondary"):
+                            del st.session_state[delete_key]
                             st.rerun()
-                
-                st.markdown('</div>', unsafe_allow_html=True)
+                    with c2:
+                        if st.button("Delete", key=f"confirm_{idx}", type="primary"):
+                            if delete_resume(st.session_state.user_id, name):
+                                if delete_key in st.session_state:
+                                    del st.session_state[delete_key]
+                                st.rerun()
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
