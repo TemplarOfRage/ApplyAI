@@ -1,11 +1,12 @@
+import os
 from anthropic import Anthropic
 from .errors import AnalysisError
 import streamlit as st
 
 def analyze_resume_for_job(resume_content, job_content):
     """Basic analysis function"""
-    # Initialize client without any extra arguments
-    client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+    # Most basic client initialization
+    client = Anthropic()
     
     prompt = f"""
     As an AI career advisor, analyze this resume against the job posting and provide detailed feedback.
