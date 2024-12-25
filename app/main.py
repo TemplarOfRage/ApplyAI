@@ -158,99 +158,52 @@ def render_resume_section():
                     if text:
                         if 'processed_files' not in st.session_state:
                             st.session_state.processed_files = {}
-                        st.session_state.processed_files[uploaded_file.name] = {
-                            'text': text,
-                            'file_type': uploaded_file.type,
-                            'edited': False,
-                            'saved': False
-                        }
+                        # Auto-save on upload
+                        if save_resume(st.session_state.user_id, uploaded_file.name, text, uploaded_file.type):
+                            st.session_state.processed_files[uploaded_file.name] = {
+                                'text': text,
+                                'file_type': uploaded_file.type
+                            }
+                            st.toast(f"✅ Saved {uploaded_file.name}")
         
         # Display all processed files in a table format
         if st.session_state.processed_files:
             st.markdown("#### Processed Resumes")
             
             # Create columns for the table header
-            cols = st.columns([3, 1, 1, 1])
+            cols = st.columns([3, 1])
             cols[0].markdown("**Filename**")
-            cols[1].markdown("**Status**")
-            cols[2].markdown("**Preview**")
-            cols[3].markdown("**Actions**")
+            cols[1].markdown("**Actions**")
             
             st.markdown("---")
             
             # Display each file's info and controls
             for filename, data in st.session_state.processed_files.items():
-                cols = st.columns([3, 1, 1, 1])
+                cols = st.columns([3, 1])
                 
-                # Filename
+                # Filename and preview toggle in first column
                 cols[0].markdown(f"📄 {filename}")
                 
-                # Status
-                status = "✅ Saved" if data['saved'] else "📝 Edited" if data['edited'] else "New"
-                cols[1].markdown(status)
-                
-                # Preview button
-                if cols[2].button("👁️", key=f"preview_{filename}"):
-                    st.session_state[f'show_preview_{filename}'] = True
-                
-                # Edit button
-                if cols[3].button("✏️", key=f"edit_{filename}"):
-                    st.session_state[f'editing_{filename}'] = True
-                
-                # Show preview if requested
-                if st.session_state.get(f'show_preview_{filename}', False):
-                    with st.expander("Preview", expanded=True):
-                        st.text(data['text'][:1000] + "..." if len(data['text']) > 1000 else data['text'])
-                        if st.button("Close Preview", key=f"close_preview_{filename}"):
-                            st.session_state[f'show_preview_{filename}'] = False
-                            st.rerun()
+                # Single action button in second column
+                if cols[1].button("👁️ View/Edit", key=f"view_{filename}"):
+                    st.session_state[f'editing_{filename}'] = not st.session_state.get(f'editing_{filename}', False)
                 
                 # Show editor if requested
                 if st.session_state.get(f'editing_{filename}', False):
-                    with st.expander("Edit Content", expanded=True):
-                        edited_text = st.text_area(
-                            "Edit extracted text",
-                            value=data['text'],
-                            height=400,
-                            key=f"editor_{filename}"
-                        )
-                        
-                        col1, col2 = st.columns([1, 4])
-                        if col1.button("Save", key=f"save_{filename}"):
-                            if save_resume(
-                                st.session_state.user_id,
-                                filename,
-                                edited_text,
-                                data['file_type']
-                            ):
-                                st.session_state.processed_files[filename]['text'] = edited_text
-                                st.session_state.processed_files[filename]['edited'] = True
-                                st.session_state.processed_files[filename]['saved'] = True
-                                st.toast(f"✅ Saved changes to {filename}")
-                                st.session_state[f'editing_{filename}'] = False
-                                st.rerun()
-                        
-                        if col2.button("Cancel", key=f"cancel_{filename}"):
-                            st.session_state[f'editing_{filename}'] = False
-                            st.rerun()
+                    edited_text = st.text_area(
+                        "Edit content",
+                        value=data['text'],
+                        height=400,
+                        key=f"editor_{filename}"
+                    )
+                    
+                    # Auto-save when content changes
+                    if edited_text != data['text']:
+                        if save_resume(st.session_state.user_id, filename, edited_text, data['file_type']):
+                            st.session_state.processed_files[filename]['text'] = edited_text
+                            st.toast(f"✅ Changes saved to {filename}")
                 
                 st.markdown("---")
-            
-            # Batch actions
-            if not all(f['saved'] for f in st.session_state.processed_files.values()):
-                if st.button("💾 Save All Unsaved"):
-                    with st.spinner("Saving all resumes..."):
-                        for filename, data in st.session_state.processed_files.items():
-                            if not data['saved']:
-                                if save_resume(
-                                    st.session_state.user_id,
-                                    filename,
-                                    data['text'],
-                                    data['file_type']
-                                ):
-                                    st.session_state.processed_files[filename]['saved'] = True
-                        st.toast("✅ All resumes saved!")
-                        st.rerun()
 
 def run():
     """Main entry point for the application"""
