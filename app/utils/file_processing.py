@@ -3,28 +3,63 @@ import PyPDF2
 import docx2txt
 from typing import Optional, Tuple
 from io import BytesIO
+import docx
+import io
 
-def extract_text_from_pdf(pdf_file) -> Optional[str]:
-    """
-    Extract text content from a PDF file.
-    
-    Args:
-        pdf_file: Uploaded PDF file from Streamlit
-        
-    Returns:
-        str: Extracted text content or None if extraction fails
-    """
+def extract_text_from_file(uploaded_file):
+    """Extract text from various file types"""
     try:
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        text_content = []
-        for page in pdf_reader.pages:
-            text = page.extract_text().strip()
-            if text:  # Only add non-empty pages
-                text_content.append(text)
-        return "\n\n".join(text_content) if text_content else None  # Double newline between pages
+        # Debug the file
+        st.write(f"DEBUG - Extracting text from {uploaded_file.name}")
+        
+        if uploaded_file.type == "application/pdf":
+            # Read PDF
+            try:
+                pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+                text = ""
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+                
+                # Debug extracted text
+                st.write(f"DEBUG - Extracted PDF text length: {len(text)}")
+                if len(text) < 10:  # Suspicious if too short
+                    st.warning("Warning: Very little text extracted from PDF")
+                
+                return text
+                
+            except Exception as e:
+                st.error(f"PDF extraction error: {str(e)}")
+                raise
+                
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            # Read DOCX
+            try:
+                doc = docx.Document(io.BytesIO(uploaded_file.read()))
+                text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                st.write(f"DEBUG - Extracted DOCX text length: {len(text)}")
+                return text
+            except Exception as e:
+                st.error(f"DOCX extraction error: {str(e)}")
+                raise
+                
+        elif uploaded_file.type == "text/plain":
+            # Read TXT
+            try:
+                text = uploaded_file.read().decode('utf-8')
+                st.write(f"DEBUG - Extracted TXT text length: {len(text)}")
+                return text
+            except Exception as e:
+                st.error(f"TXT extraction error: {str(e)}")
+                raise
+                
+        else:
+            raise ValueError(f"Unsupported file type: {uploaded_file.type}")
+            
     except Exception as e:
-        st.error(f"Error reading PDF: {str(e)}")
-        return None
+        st.error(f"Error extracting text: {str(e)}")
+        import traceback
+        st.write("DEBUG - Full extraction error:", traceback.format_exc())
+        raise
 
 def extract_text_from_docx(docx_file) -> Optional[str]:
     """
@@ -64,7 +99,7 @@ def process_resume_file(uploaded_file) -> Optional[Tuple[str, str, str]]:
         
         # Process different file types
         if file_type == "application/pdf":
-            content = extract_text_from_pdf(uploaded_file)
+            content = extract_text_from_file(uploaded_file)
         elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
             content = extract_text_from_docx(uploaded_file)
         elif file_type in ["text/plain", "application/text"]:

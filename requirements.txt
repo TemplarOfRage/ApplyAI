@@ -3,8 +3,8 @@ streamlit>=1.31.0
 anthropic
 
 # Document processing
-PyPDF2==3.0.1
-python-docx==0.8.11
+PyPDF2>=3.0.0
+python-docx>=0.8.11
 docx2txt==0.8
 
 # Authentication and security
