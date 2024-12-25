@@ -63,8 +63,8 @@ def render_resume_section(col2):
         # Hide the default file uploader UI elements and improve layout
         st.markdown("""
             <style>
-                /* Hide the uploaded file info */
-                .uploadedFile {
+                /* Completely hide the uploaded file UI */
+                .uploadedFile, .stFileUploader > div > div:nth-child(2) {
                     display: none !important;
                 }
                 
@@ -73,30 +73,35 @@ def render_resume_section(col2):
                     padding: 0.5rem !important;
                 }
                 
-                /* Improve button layout */
-                .stButton button {
-                    padding: 0.25rem 0.5rem !important;
-                    font-size: 0.8rem !important;
-                    min-height: 0 !important;
-                    height: 2em !important;
-                    line-height: 1 !important;
-                    width: auto !important;
-                    flex-shrink: 0 !important;
+                /* Icon button styling */
+                .icon-button {
+                    background: transparent;
+                    border: none;
+                    color: #666;
+                    cursor: pointer;
+                    padding: 0.3rem 0.5rem;
+                    font-size: 1.2rem;
+                    transition: color 0.3s;
+                    margin: 0 0.2rem;
                 }
                 
-                /* Ensure columns stay within bounds */
-                .row-widget.stHorizontal {
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    overflow: hidden !important;
+                .icon-button:hover {
+                    color: #ff4b4b;
                 }
                 
-                /* Make resume name truncate with ellipsis */
+                /* Resume name styling */
                 .resume-name {
-                    white-space: nowrap !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
-                    max-width: 200px !important;
+                    display: flex;
+                    align-items: center;
+                    font-size: 0.9rem;
+                    padding: 0.5rem 0;
+                }
+                
+                /* Action buttons container */
+                .action-buttons {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 0.5rem;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -118,6 +123,7 @@ def render_resume_section(col2):
                         uploaded_file.type
                     )
                     if success:
+                        # Clear the uploader and force refresh
                         st.session_state.resume_uploader = None
                         st.rerun()
             except Exception as e:
@@ -137,28 +143,38 @@ def render_saved_resumes():
         for name, content, file_type in resumes:
             # Use a container for better layout control
             with st.container():
-                col1, col2, col3 = st.columns([5, 1, 1])
+                col1, col2 = st.columns([4, 1])
                 
                 with col1:
                     st.markdown(f"""
-                        <div class="resume-name" style="padding: 0.5rem 0;">
+                        <div class="resume-name">
                             📄 {name}
                         </div>
                     """, unsafe_allow_html=True)
                 
                 with col2:
-                    if st.button("View", key=f"view_{name}", use_container_width=True):
+                    st.markdown(f"""
+                        <div class="action-buttons">
+                            <button class="icon-button" onclick="document.getElementById('view_{name}').click()" title="View">
+                                👁️
+                            </button>
+                            <button class="icon-button" onclick="document.getElementById('del_{name}').click()" title="Delete">
+                                🗑️
+                            </button>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Hidden buttons for functionality
+                    if st.button("", key=f"view_{name}", help="View resume"):
                         st.session_state[f"show_{name}"] = True
-                
-                with col3:
-                    if st.button("Delete", key=f"del_{name}", use_container_width=True):
+                    
+                    if st.button("", key=f"del_{name}", help="Delete resume"):
                         if delete_resume(st.session_state.user_id, name):
-                            # Clear any associated session state
                             if f"show_{name}" in st.session_state:
                                 del st.session_state[f"show_{name}"]
                             st.rerun()
             
-            # Show content if button was clicked
+            # Show content if view was clicked
             if st.session_state.get(f"show_{name}", False):
                 with st.expander("Resume Content", expanded=True):
                     st.text_area("", value=content, height=200, 
