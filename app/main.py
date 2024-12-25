@@ -127,31 +127,11 @@ def render_resume_section():
         </style>
     """, unsafe_allow_html=True)
     
+    # Get current resumes first
     resumes = get_user_resumes(st.session_state.user_id)
     
-    # Handle file upload first
-    uploaded_file = st.file_uploader(
-        "Upload another resume" if resumes else "Upload your first resume",
-        type=["pdf", "docx", "txt"],
-        key="resume_uploader"
-    )
-    
-    if uploaded_file:
-        try:
-            content = extract_text_from_file(uploaded_file)
-            if content and save_resume(st.session_state.user_id, 
-                                    uploaded_file.name, 
-                                    content, 
-                                    uploaded_file.type):
-                st.rerun()
-        except Exception as e:
-            st.error("Failed to process resume. Please try again.")
-            print(f"Error uploading resume: {str(e)}")
-    
-    # Show existing resumes in a table
+    # Show existing resumes in a table if any exist
     if resumes:
-        st.divider()
-        
         # Create table header
         st.markdown("""
             <table class="resume-table">
@@ -195,6 +175,30 @@ def render_resume_section():
                                type="secondary", use_container_width=True):
                         del st.session_state[f"show_{view_key}"]
                         st.rerun()
+    
+    # Add divider before uploader
+    st.divider()
+    
+    # Handle file upload last
+    uploaded_file = st.file_uploader(
+        "Upload another resume" if resumes else "Upload your first resume",
+        type=["pdf", "docx", "txt"],
+        key="resume_uploader",
+        on_change=None  # Ensure no automatic callbacks
+    )
+    
+    if uploaded_file is not None:  # Check explicitly for file
+        try:
+            content = extract_text_from_file(uploaded_file)
+            if content and save_resume(st.session_state.user_id, 
+                                    uploaded_file.name, 
+                                    content, 
+                                    uploaded_file.type):
+                st.rerun()  # Force immediate rerun after save
+                return  # Exit function to prevent further rendering
+        except Exception as e:
+            st.error("Failed to process resume. Please try again.")
+            print(f"Error uploading resume: {str(e)}")
 
 def run():
     """Main entry point for the application"""
