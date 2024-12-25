@@ -19,44 +19,63 @@ import tempfile
 import os
 
 def render_job_posting_section():
+    # Store job posting data in session state
+    if 'job_data' not in st.session_state:
+        st.session_state.job_data = {
+            'url': '',
+            'text': '',
+            'questions': ''
+        }
+
     # Job Posting URL input
-    job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
+    job_url = st.text_input(
+        "Job Posting URL", 
+        value=st.session_state.job_data['url'],
+        placeholder="Paste a job posting URL here (optional)"
+    )
+    st.session_state.job_data['url'] = job_url
 
     # Job posting text area
-    job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
+    job_text = st.text_area(
+        "Or paste job posting text",
+        value=st.session_state.job_data['text'],
+        placeholder="Paste the job description here to analyze it..."
+    )
+    st.session_state.job_data['text'] = job_text
 
     # Custom questions in an expander
     with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
         custom_questions = st.text_area(
             "Add any custom application questions",
+            value=st.session_state.job_data['questions'],
             placeholder="Enter each question on a new line...",
             help="These questions will be analyzed along with your resume"
         )
+        st.session_state.job_data['questions'] = custom_questions
 
-    # Simple conditions:
-    # 1. Is there a job posting? (either URL or text)
-    has_job = bool(job_url or job_text)
-    
-    # 2. Is there at least one resume?
-    has_resume = bool(get_user_resumes(st.session_state.user_id))
-    
+    # Simple conditions using session state
+    has_job = bool(st.session_state.job_data['url'] or st.session_state.job_data['text'])
+    has_resume = bool(st.session_state.resumes) if 'resumes' in st.session_state else False
+
     # Button is enabled only when both conditions are true
     analyze_disabled = not (has_job and has_resume)
     
-    # Always show the button
     if st.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
-        # Only execute if we have both requirements
         if has_job and has_resume:
-            analyze_job_posting(job_url, job_text, custom_questions)
+            analyze_job_posting(
+                st.session_state.job_data['url'],
+                st.session_state.job_data['text'],
+                st.session_state.job_data['questions']
+            )
 
 def render_resume_section():
-    """Render resume management section"""
-    st.subheader("📄 Resume Management")
+    # Initialize resume list in session state if it doesn't exist
+    if 'resumes' not in st.session_state:
+        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
     
-    # Initialize session state for edit panels
     if 'edit_states' not in st.session_state:
         st.session_state.edit_states = {}
-    
+
     # Update styles to be more compact
     st.markdown("""
         <style>
@@ -131,10 +150,7 @@ def render_resume_section():
     if 'uploader_key' in st.session_state:
         st.session_state.delete_confirmation = None
     
-    # Get current resumes
-    resumes = get_user_resumes(st.session_state.user_id)
-    
-    if resumes:
+    if st.session_state.resumes:
         # Create table header
         st.markdown("""
             <table class="resume-table">
@@ -149,7 +165,7 @@ def render_resume_section():
             </table>
         """, unsafe_allow_html=True)
         
-        for idx, (name, content, file_type) in enumerate(resumes):
+        for idx, (name, content, file_type) in enumerate(st.session_state.resumes):
             cols = st.columns([7, 1, 1, 1])
             
             # Truncate filename if too long
@@ -162,7 +178,22 @@ def render_resume_section():
             edit_key = f"edit_{idx}_{hash(name)}"
             if cols[1].button("✏️", key=f"edit_btn_{idx}"):
                 st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
-                st.rerun()
+            
+            # Show edit panel if active
+            if st.session_state.edit_states.get(edit_key, False):
+                with st.container():
+                    edited_content = st.text_area(
+                        "Edit extracted text:",
+                        value=content,
+                        height=300,
+                        key=f"content_{idx}_{hash(name)}"
+                    )
+                    
+                    if st.button("Save Changes", key=f"save_{idx}"):
+                        update_resume_content(st.session_state.user_id, name, edited_content)
+                        st.session_state.edit_states[edit_key] = False
+                        # Update resumes in session state
+                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
             
             # Download button
             file_content = get_resume_file(st.session_state.user_id, name)
@@ -174,44 +205,17 @@ def render_resume_section():
                     mime=file_type,
                 )
             
-            # Delete button - direct delete
+            # Delete button
             if cols[3].button("🗑️", key=f"del_btn_{idx}"):
                 if delete_resume(st.session_state.user_id, name):
-                    st.rerun()
-            
-            # Show edit panel if requested
-            if st.session_state.edit_states.get(edit_key, False):
-                st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
-                
-                edited_content = st.text_area(
-                    "Edit extracted text:",
-                    value=content,
-                    height=300,
-                    key=f"content_{idx}_{hash(name)}"
-                )
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Save Changes", key=f"save_{idx}", type="primary"):
-                        update_resume_content(st.session_state.user_id, name, edited_content)
-                        del st.session_state.edit_states[edit_key]
-                        st.rerun()
-                with col2:
-                    if st.button("Cancel", key=f"cancel_{idx}", type="secondary"):
-                        del st.session_state.edit_states[edit_key]
-                        st.rerun()
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Add divider before uploader
-    st.divider()
-    
+                    # Update resumes in session state
+                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+
     # File uploader section
     uploaded_file = st.file_uploader(
-        "Upload another resume" if resumes else "Upload your first resume",
+        "Upload another resume" if st.session_state.resumes else "Upload your first resume",
         type=["pdf", "docx", "txt"],
-        key=f"resume_uploader_{st.session_state.get('uploader_key', 0)}",
-        label_visibility="collapsed"
+        key="resume_uploader"
     )
     
     # Handle file upload
@@ -225,8 +229,8 @@ def render_resume_section():
                 uploaded_file.type,
                 file_content
             ):
-                st.session_state['uploader_key'] = st.session_state.get('uploader_key', 0) + 1
-                st.rerun()
+                # Update resumes in session state
+                st.session_state.resumes = get_user_resumes(st.session_state.user_id)
         except Exception as e:
             st.error("Failed to process resume. Please try again.")
             print(f"Error uploading resume: {str(e)}")
