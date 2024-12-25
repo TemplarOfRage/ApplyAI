@@ -111,22 +111,28 @@ def render_resume_section():
                 border: none;
                 border-radius: 4px;
             }
-            /* Hide default expander styling */
-            .streamlit-expanderHeader {
-                display: none;
-            }
-            .streamlit-expanderContent {
-                border: none !important;
-                padding-top: 0 !important;
-            }
-            /* PDF preview container */
             .pdf-preview {
-                margin-top: 1rem;
-                margin-left: 3rem;  /* Indent to align with file name */
+                margin-top: 0.5rem;
+                margin-left: 3rem;
                 padding: 1rem;
                 background: #f8f9fa;
                 border-radius: 4px;
                 border: 1px solid #eee;
+            }
+            /* Table styles */
+            .resume-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .resume-table th, .resume-table td {
+                padding: 0.5rem;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+            }
+            .file-name {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -150,9 +156,6 @@ def render_resume_section():
         """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
-            # File row container
-            st.markdown('<div class="file-row">', unsafe_allow_html=True)
-            
             cols = st.columns([7, 1, 1, 1])
             
             # Truncate filename if too long
@@ -168,10 +171,7 @@ def render_resume_section():
             if cols[1].button("👁️", key=view_btn_key, help="View original file"):
                 # Toggle view state
                 current_state = st.session_state.view_states.get(view_state_key, False)
-                if current_state:
-                    del st.session_state.view_states[view_state_key]
-                else:
-                    st.session_state.view_states[view_state_key] = True
+                st.session_state.view_states[view_state_key] = not current_state
                 st.rerun()
             
             # Edit and Delete buttons
@@ -183,31 +183,30 @@ def render_resume_section():
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Show file preview if requested
+            # Show file preview only if explicitly requested
             if st.session_state.view_states.get(view_state_key, False):
                 st.markdown('<div class="pdf-preview">', unsafe_allow_html=True)
                 file_content = get_resume_file(st.session_state.user_id, name)
                 if file_content and file_type == "application/pdf":
-                    import base64
-                    
-                    # Convert to base64 directly from the file content
-                    b64_pdf = base64.b64encode(file_content).decode('utf-8')
-                    
-                    # Add close button
-                    if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
-                        del st.session_state.view_states[view_state_key]
-                        st.rerun()
-                    
-                    # Use PDF.js viewer with direct base64 data
-                    st.markdown(
-                        f'<iframe src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{b64_pdf}#zoom=page-fit" class="pdf-viewer"></iframe>',
-                        unsafe_allow_html=True
-                    )
+                    try:
+                        # Add close button
+                        if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
+                            del st.session_state.view_states[view_state_key]
+                            st.rerun()
+                        
+                        # Display PDF using a download button for now
+                        st.download_button(
+                            "📄 Open PDF",
+                            file_content,
+                            file_name=name,
+                            mime="application/pdf",
+                            key=f"download_{idx}_{hash(name)}"
+                        )
+                    except Exception as e:
+                        st.error(f"Error displaying PDF: {str(e)}")
                 else:
                     st.info("Preview not available for this file type")
                 st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)  # Close file row container
     
     # Add divider before uploader
     st.divider()
@@ -220,6 +219,7 @@ def render_resume_section():
         label_visibility="collapsed"
     )
     
+    # Handle file upload
     if uploaded_file is not None:
         try:
             content, file_content = extract_text_from_file(uploaded_file)
