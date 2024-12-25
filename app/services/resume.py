@@ -6,7 +6,7 @@ Resume processing services for ApplyAI.
 import streamlit as st
 import PyPDF2
 import docx2txt
-from app.services.auth import get_connection
+from .auth import get_connection
 
 def extract_text_from_pdf(pdf_file) -> str:
     """Extract text from a PDF file"""
@@ -39,10 +39,10 @@ def save_resume(user_id: str, name: str, content: str, file_type: str) -> bool:
     with get_connection() as conn:
         c = conn.cursor()
         try:
-            c.execute('''INSERT INTO resumes 
-                        (user_id, name, content, file_type, created_at)
-                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
-                     (user_id, name, content, file_type))
+            c.execute(
+                'INSERT INTO resumes (user_id, name, content, file_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                (user_id, name, content, file_type)
+            )
             conn.commit()
             return True
         except Exception as e:
