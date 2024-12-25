@@ -8,6 +8,53 @@ from app.services.resume import save_resume, get_user_resumes, delete_resume, ex
 from app.services.analysis import save_analysis, get_user_analysis_history, analyze_job_posting, extract_text_from_url
 from app.config import init_streamlit_config, get_api_key, render_config_sidebar
 import uuid
+from datetime import datetime
+import sqlite3
+from contextlib import contextmanager
+
+@contextmanager
+def get_connection():
+    """Database connection context manager"""
+    conn = sqlite3.connect('applyai.db', check_same_thread=False)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def init_db():
+    """Initialize the database"""
+    with get_connection() as conn:
+        c = conn.cursor()
+        # Create users table
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (id TEXT PRIMARY KEY,
+                      username TEXT UNIQUE,
+                      password_hash TEXT,
+                      created_at TIMESTAMP)''')
+        
+        # Create resumes table
+        c.execute('''CREATE TABLE IF NOT EXISTS resumes
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id TEXT,
+                      name TEXT,
+                      content TEXT,
+                      file_type TEXT,
+                      created_at TIMESTAMP,
+                      FOREIGN KEY(user_id) REFERENCES users(id))''')
+        
+        # Create analysis history table
+        c.execute('''CREATE TABLE IF NOT EXISTS analysis_history
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id TEXT,
+                      job_post TEXT,
+                      analysis TEXT,
+                      created_at TIMESTAMP,
+                      FOREIGN KEY(user_id) REFERENCES users(id))''')
+        
+        conn.commit()
+
+# Initialize database on startup
+init_db()
 
 def render_page():
     """Render the main page with fixed columns"""
