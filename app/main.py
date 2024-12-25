@@ -5,6 +5,7 @@ import streamlit as st
 import PyPDF2
 import io
 from utils.db import save_resume
+from utils.auth import check_auth
 
 def extract_text_from_pdf(uploaded_file):
     """Extract text from PDF files"""
@@ -18,11 +19,6 @@ def extract_text_from_pdf(uploaded_file):
     except Exception as e:
         st.error(f"Error extracting text: {str(e)}")
         return None
-
-def check_auth():
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = 'test_user'
-    return True
 
 def render_resume_section():
     st.markdown("### Resume Management")
