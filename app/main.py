@@ -19,15 +19,12 @@ import tempfile
 import os
 
 def render_job_posting_section():
-    # Debug info
-    st.write("Debug Info:")
-    st.write(f"Has resumes: {bool(st.session_state.get('resumes', []))}")
+    # Create a placeholder for the button first
+    button_placeholder = st.empty()
     
     # Job inputs
     job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
     job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
-    
-    st.write(f"Has job content: {bool(job_url or job_text)}")
     
     with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
         custom_questions = st.text_area(
@@ -36,27 +33,28 @@ def render_job_posting_section():
             help="These questions will be analyzed along with your resume"
         )
 
-    # Force container creation
-    with st.container():
-        # Simple conditions
-        has_job = bool(job_url or job_text)
-        has_resume = bool(st.session_state.get('resumes', []))
-        
-        st.write(f"Button should be enabled: {has_job and has_resume}")
-        
-        # Create button columns
+    # Conditions
+    has_job = bool(job_url or job_text)
+    has_resume = bool(st.session_state.get('resumes', []))
+    
+    # Use the placeholder to render the button
+    with button_placeholder.container():
         col1, col2 = st.columns([1, 4])
         
-        # Separate button creation from condition checking
-        button_clicked = col1.button(
+        analyze_clicked = col1.button(
             "Analyze",
-            key="analyze_button_debug",
-            use_container_width=True,
-            type="primary"
+            key="analyze_button_fixed",
+            disabled=not (has_job and has_resume),
+            type="primary",
+            use_container_width=True
         )
         
-        # Handle button state separately
-        if button_clicked and has_job and has_resume:
+        if not has_resume:
+            col2.info("⚠️ Upload a resume to get started")
+        elif not has_job:
+            col2.info("⚠️ Add a job posting to analyze")
+        
+        if analyze_clicked and has_job and has_resume:
             with st.spinner("Analyzing..."):
                 try:
                     resume = st.session_state.resumes[0]
@@ -68,12 +66,6 @@ def render_job_posting_section():
                     st.success("Analysis complete!")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-        
-        # Status message
-        if not has_resume:
-            col2.info("⚠️ Upload a resume to get started")
-        elif not has_job:
-            col2.info("⚠️ Add a job posting to analyze")
 
     # Show results if available
     if 'analysis_results' in st.session_state:
