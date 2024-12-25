@@ -102,17 +102,17 @@ def render_resume_section():
     if 'edit_states' not in st.session_state:
         st.session_state.edit_states = {}
     
-    # Update styles to REALLY remove all boxes and improve alignment
+    # Update styles to be more compact
     st.markdown("""
         <style>
             /* Table styles */
             .resume-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-bottom: 1rem;
+                margin-bottom: 0.5rem;
             }
             .resume-table th {
-                padding: 0.75rem;
+                padding: 0.5rem;
                 color: #666;
                 font-weight: 500;
                 border-bottom: 1px solid #eee;
@@ -120,24 +120,6 @@ def render_resume_section():
             }
             .resume-table th:first-child {
                 text-align: left !important;
-            }
-            /* Aggressively remove button styling */
-            .stButton > button,
-            .stDownloadButton > button {
-                background: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                box-shadow: none !important;
-                width: auto !important;
-                height: auto !important;
-                line-height: normal !important;
-            }
-            .stButton > button:hover,
-            .stDownloadButton > button:hover {
-                background: none !important;
-                border: none !important;
-                box-shadow: none !important;
             }
             /* Center icons */
             div[data-testid="column"] {
@@ -148,96 +130,48 @@ def render_resume_section():
             div[data-testid="column"]:first-child {
                 justify-content: flex-start !important;
             }
-            /* File name styles */
-            .file-name {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                padding: 0.75rem 0;
-            }
-            /* Delete dialog styles */
-            .delete-dialog {
-                padding: 1rem;
-                margin-top: 0.5rem;
-                background: #fff;
-                border-radius: 4px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            .delete-dialog .actions {
-                display: flex;
-                gap: 1rem;
-                margin-top: 1rem;
+            /* Remove button styling */
+            .stButton > button,
+            .stDownloadButton > button {
+                background: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
             }
             /* Delete confirmation dialog */
             .delete-confirm {
-                background-color: white;
-                border: 1px solid #ddd;
+                margin: 0.5rem 3rem;
+                padding: 0.75rem;
+                background: #f8f9fa;
+                border: 1px solid #eee;
                 border-radius: 4px;
-                padding: 1rem;
-                margin: 0.5rem 0 0.5rem 3rem;
-                width: fit-content;
             }
             .delete-confirm p {
-                margin: 0 0 1rem 0;
+                margin: 0 0 0.5rem 0;
+                font-size: 0.9rem;
                 color: #444;
             }
             .delete-buttons {
                 display: flex;
-                gap: 1rem;
+                justify-content: flex-end;
+                gap: 0.5rem;
             }
             .delete-buttons button {
-                padding: 0.5rem 1rem !important;
+                font-size: 0.9rem !important;
+                padding: 0.25rem 0.75rem !important;
                 border-radius: 4px !important;
-            }
-            .delete-buttons button:first-child {
-                background-color: #ff4b4b !important;
-                color: white !important;
-            }
-            .delete-buttons button:last-child {
-                background-color: #f0f2f6 !important;
-                color: #444 !important;
-            }
-            /* Delete confirmation dialog */
-            .delete-confirm-box {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 12px;
-                margin: 8px 0;
-                background: white;
-                width: 100%;
-            }
-            .delete-confirm-text {
-                margin-bottom: 16px;
-                color: #333;
-                font-size: 14px;
-            }
-            .delete-confirm-buttons {
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-            }
-            /* Override Streamlit's button styles */
-            .delete-confirm-buttons .stButton > button {
-                padding: 4px 12px !important;
-                border-radius: 4px !important;
-                font-size: 14px !important;
-                min-height: 32px !important;
-            }
-            .delete-button .stButton > button {
-                background-color: #ff4b4b !important;
-                color: white !important;
-                border: none !important;
-            }
-            .cancel-button .stButton > button {
-                background-color: #f0f2f6 !important;
-                color: #333 !important;
-                border: 1px solid #ddd !important;
+                min-height: 0 !important;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    # Initialize delete confirmation state
+    # Initialize delete confirmation state (but don't set it automatically)
     if 'delete_confirmation' not in st.session_state:
+        st.session_state.delete_confirmation = None
+    
+    # Clear delete confirmation when uploading new file
+    if 'uploader_key' in st.session_state:
         st.session_state.delete_confirmation = None
     
     # Get current resumes
@@ -287,32 +221,23 @@ def render_resume_section():
             if cols[3].button("🗑️", key=f"del_btn_{idx}"):
                 st.session_state.delete_confirmation = name
             
-            # Show delete confirmation if this is the file being deleted
+            # Show delete confirmation only when explicitly requested
             if st.session_state.delete_confirmation == name:
-                st.markdown("""
-                    <div class="delete-confirm-box">
-                        <div class="delete-confirm-text">
-                            Are you sure you want to delete this file?
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown('<div class="delete-confirm">', unsafe_allow_html=True)
+                st.markdown('<p>Are you sure you want to delete this file?</p>', unsafe_allow_html=True)
                 
-                # Use columns for button alignment
-                _, col1, col2 = st.columns([3, 1, 1])
+                col1, col2 = st.columns([1, 1])
                 with col1:
-                    st.markdown('<div class="cancel-button">', unsafe_allow_html=True)
-                    if st.button("Cancel", key=f"cancel_del_{idx}"):
+                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
                         st.session_state.delete_confirmation = None
                         st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
                 with col2:
-                    st.markdown('<div class="delete-button">', unsafe_allow_html=True)
-                    if st.button("Delete", key=f"confirm_del_{idx}"):
+                    if st.button("Delete", key=f"confirm_del_{idx}", type="primary"):
                         if delete_resume(st.session_state.user_id, name):
                             st.session_state.delete_confirmation = None
                             st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
