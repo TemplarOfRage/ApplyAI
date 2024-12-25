@@ -39,10 +39,25 @@ def save_resume(user_id: str, name: str, content: str, file_type: str) -> bool:
     with get_connection() as conn:
         c = conn.cursor()
         try:
+            # Check if resume with same name exists
             c.execute(
-                'INSERT INTO resumes (user_id, name, content, file_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                (user_id, name, content, file_type)
+                'SELECT id FROM resumes WHERE user_id = ? AND name = ?',
+                (user_id, name)
             )
+            existing = c.fetchone()
+            
+            if existing:
+                # Update existing resume
+                c.execute(
+                    'UPDATE resumes SET content = ?, file_type = ?, created_at = CURRENT_TIMESTAMP WHERE user_id = ? AND name = ?',
+                    (content, file_type, user_id, name)
+                )
+            else:
+                # Create new resume
+                c.execute(
+                    'INSERT INTO resumes (user_id, name, content, file_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                    (user_id, name, content, file_type)
+                )
             conn.commit()
             return True
         except Exception as e:
