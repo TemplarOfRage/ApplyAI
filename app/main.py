@@ -128,7 +128,7 @@ def render_resume_section():
     else:
         st.markdown('<div class="resume-list">', unsafe_allow_html=True)
         
-        for name, content, file_type in resumes:
+        for idx, (name, content, file_type) in enumerate(resumes):
             cols = st.columns([8, 1, 1])
             
             # Truncate filename if too long
@@ -137,22 +137,25 @@ def render_resume_section():
             # Resume name
             cols[0].markdown(f"📄 {display_name}")
             
-            # View button
-            if cols[1].button("👁️", key=f"view_{name}", help="View resume content"):
-                st.session_state[f"show_{name}"] = True
+            # View button with unique key using index
+            view_key = f"view_{idx}_{hash(name)}"
+            if cols[1].button("👁️", key=view_key, help="View resume content"):
+                st.session_state[f"show_{view_key}"] = True
             
-            # Delete button
-            if cols[2].button("🗑️", key=f"del_{name}", help="Delete resume"):
+            # Delete button with unique key using index
+            del_key = f"del_{idx}_{hash(name)}"
+            if cols[2].button("🗑️", key=del_key, help="Delete resume"):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
             # Show content if requested
-            if st.session_state.get(f"show_{name}", False):
+            if st.session_state.get(f"show_{view_key}", False):
                 with st.expander("", expanded=True):
                     st.text_area("", value=content, height=200, 
-                               disabled=True, label_visibility="collapsed")
-                    if st.button("Hide", key=f"hide_{name}"):
-                        del st.session_state[f"show_{name}"]
+                               disabled=True, label_visibility="collapsed",
+                               key=f"content_{idx}_{hash(name)}")
+                    if st.button("Hide", key=f"hide_{idx}_{hash(name)}"):
+                        del st.session_state[f"show_{view_key}"]
                         st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
