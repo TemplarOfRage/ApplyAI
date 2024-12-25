@@ -60,8 +60,8 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Initialize database on startup
-        init_database()
+        # Debug: Show current user ID
+        print(f"\n=== Current User ID: {st.session_state.get('user_id', 'Not set')} ===")
         
         uploaded_file = st.file_uploader(
             "Upload Resume",
@@ -83,7 +83,6 @@ def render_resume_section(col2):
                     if success:
                         print("Resume saved successfully")
                         # Clear the uploader and force refresh
-                        uploaded_file = None
                         st.session_state.pop('resume_uploader', None)
                         st.rerun()
                     else:
@@ -92,6 +91,12 @@ def render_resume_section(col2):
                 print(f"Error processing upload: {str(e)}")
         
         st.divider()
+        
+        # Debug: Show resumes before rendering
+        print("\n=== Checking Saved Resumes Before Render ===")
+        resumes = get_user_resumes(st.session_state.user_id)
+        print(f"Number of resumes found: {len(resumes)}")
+        
         render_saved_resumes()
 
 def render_saved_resumes():

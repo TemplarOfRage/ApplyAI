@@ -104,6 +104,12 @@ def save_resume(user_id, filename, content, file_type):
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # First, verify if the resume already exists
+        c.execute('SELECT COUNT(*) FROM resumes WHERE user_id = ? AND filename = ?',
+                 (user_id, filename))
+        exists = c.fetchone()[0]
+        print(f"Resume already exists: {exists > 0}")
+        
         c.execute('''
             INSERT OR REPLACE INTO resumes 
             (user_id, filename, content, file_type, timestamp)
@@ -111,7 +117,18 @@ def save_resume(user_id, filename, content, file_type):
         ''', (user_id, filename, content, file_type, timestamp))
         
         conn.commit()
-        print("Resume saved successfully")
+        
+        # Verify the save
+        c.execute('SELECT COUNT(*) FROM resumes WHERE user_id = ? AND filename = ?',
+                 (user_id, filename))
+        saved = c.fetchone()[0]
+        print(f"Resume saved successfully: {saved > 0}")
+        
+        # Debug: show all resumes in database
+        c.execute('SELECT user_id, filename FROM resumes')
+        all_resumes = c.fetchall()
+        print(f"All resumes in database: {all_resumes}")
+        
         return True
         
     except Exception as e:
@@ -128,9 +145,17 @@ def get_user_resumes(user_id):
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
+        # Debug: show all resumes in database
+        c.execute('SELECT user_id, filename FROM resumes')
+        all_resumes = c.fetchall()
+        print(f"All resumes in database: {all_resumes}")
+        
+        # Get resumes for specific user
         c.execute('SELECT filename, content, file_type FROM resumes WHERE user_id = ?', (user_id,))
         results = c.fetchall()
-        print(f"Found {len(results)} resumes")
+        print(f"Found {len(results)} resumes for user {user_id}")
+        print(f"Resume filenames: {[r[0] for r in results]}")
+        
         return results
         
     except Exception as e:
