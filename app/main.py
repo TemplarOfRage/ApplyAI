@@ -176,14 +176,21 @@ def render_resume_section():
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Show PDF preview if requested
+            # Show file preview if requested
             if st.session_state.get(f"show_{view_key}", False):
                 with st.expander("", expanded=True):
-                    if file_type == "application/pdf":
-                        st.write("PDF Preview:")
-                        st.pdf(get_resume_file(st.session_state.user_id, name))
+                    file_content = get_resume_file(st.session_state.user_id, name)
+                    if file_content:
+                        st.download_button(
+                            "📄 Open Original File",
+                            file_content,
+                            file_name=name,
+                            mime=file_type,
+                            key=f"download_{idx}_{hash(name)}",
+                            help="Click to open file"
+                        )
                     else:
-                        st.info("Preview not available for this file type")
+                        st.info("Original file not available")
             
             # Show editable text content if requested
             if st.session_state.get(f"edit_{view_key}", False):
