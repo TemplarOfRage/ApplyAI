@@ -7,7 +7,9 @@ from services.resume import (
     get_user_resumes, 
     delete_resume, 
     save_resume,
-    extract_text_from_file
+    extract_text_from_file,
+    get_resume_file,
+    update_resume_content
 )
 from services.analysis import save_analysis, get_user_analysis_history
 from config import init_streamlit_config
