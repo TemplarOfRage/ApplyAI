@@ -184,13 +184,23 @@ def render_resume_section():
     if st.session_state.resumes:
         st.markdown("### Your Resumes")
         
-        for idx, (name, content, file_type, created_at, updated_at) in enumerate(st.session_state.resumes):
+        for idx, resume_data in enumerate(st.session_state.resumes):
+            # Safely unpack resume data with defaults
+            name = resume_data[0] if len(resume_data) > 0 else "Untitled"
+            content = resume_data[1] if len(resume_data) > 1 else ""
+            file_type = resume_data[2] if len(resume_data) > 2 else "text/plain"
+            created_at = resume_data[3] if len(resume_data) > 3 else None
+            updated_at = resume_data[4] if len(resume_data) > 4 else None
+            
             with st.expander(f"📄 {name}", expanded=False):
                 cols = st.columns([3, 1, 1, 1])
                 
                 # File info
                 with cols[0]:
-                    st.markdown(f"**Last updated:** {updated_at.strftime('%Y-%m-%d %H:%M')}")
+                    if updated_at:
+                        st.markdown(f"**Last updated:** {updated_at}")
+                    elif created_at:
+                        st.markdown(f"**Created:** {created_at}")
                 
                 # Edit button
                 if cols[1].button("✏️ Edit", key=f"edit_{idx}"):

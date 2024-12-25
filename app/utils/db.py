@@ -44,22 +44,7 @@ def save_resume(user_id, filename, content, file_type):
     """Save or update a resume"""
     with get_db() as conn:
         try:
-            # Debug info
-            st.write(f"DEBUG - Saving resume: {filename}")
-            st.write(f"DEBUG - User ID: {user_id}")
-            
-            # Convert content to string if it's a tuple
-            if isinstance(content, tuple):
-                st.write("DEBUG - Content is a tuple, converting to string")
-                content = str(content)
-            elif content is None:
-                st.write("DEBUG - Content is None!")
-                return False
-                
-            # Ensure file_type is a string
-            file_type = str(file_type)
-            
-            # First, check if table exists
+            # First, check if table exists with all required fields
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS resumes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,29 +72,30 @@ def save_resume(user_id, filename, content, file_type):
                         file_type = ?, 
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND filename = ?
-                """, (str(content), file_type, user_id, filename))
-                st.write(f"DEBUG - Updated existing resume: {filename}")
+                """, (content, file_type, user_id, filename))
             else:
                 # Insert new resume
                 conn.execute("""
-                    INSERT INTO resumes (user_id, filename, content, file_type)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, filename, str(content), file_type))
-                st.write(f"DEBUG - Inserted new resume: {filename}")
+                    INSERT INTO resumes (
+                        user_id, filename, content, file_type, 
+                        created_at, updated_at
+                    ) VALUES (
+                        ?, ?, ?, ?, 
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                """, (user_id, filename, content, file_type))
             
             return True
             
         except Exception as e:
             st.error(f"Database error saving resume {filename}: {str(e)}")
-            import traceback
-            st.write("DEBUG - Full error:", traceback.format_exc())
             return False
 
 def get_user_resumes(user_id):
     """Get all resumes for a user"""
     with get_db() as conn:
         try:
-            # Ensure table exists
+            # Ensure table exists with all fields
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS resumes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,8 +109,11 @@ def get_user_resumes(user_id):
                 )
             """)
             
+            # Query all fields
             return conn.execute("""
-                SELECT filename, content, file_type, created_at, updated_at
+                SELECT filename, content, file_type, 
+                       datetime(created_at) as created_at, 
+                       datetime(updated_at) as updated_at
                 FROM resumes 
                 WHERE user_id = ?
                 ORDER BY updated_at DESC
