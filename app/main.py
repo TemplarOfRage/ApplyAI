@@ -19,16 +19,6 @@ import tempfile
 import os
 
 def render_job_posting_section():
-    st.markdown("""
-        <style>
-            .analyze-section {
-                margin-top: 1rem;
-                padding-top: 1rem;
-                border-top: 1px solid #eee;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
     # Job Posting URL input
     job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
 
@@ -43,39 +33,21 @@ def render_job_posting_section():
             help="These questions will be analyzed along with your resume"
         )
 
-    # ALWAYS create the analyze section
-    st.markdown('<div class="analyze-section">', unsafe_allow_html=True)
+    # Simple conditions:
+    # 1. Is there a job posting? (either URL or text)
+    has_job = bool(job_url or job_text)
     
-    # Get current resumes
-    resumes = get_user_resumes(st.session_state.user_id)
-    has_resumes = bool(resumes)
-    has_job_content = bool(job_url or job_text)
-
-    # Create columns for button and message
-    col1, col2 = st.columns([1, 4])
-
-    # ALWAYS show the button, regardless of conditions
-    analyze_disabled = not (has_resumes and has_job_content)
-    analyze_clicked = col1.button(
-        "Analyze",
-        disabled=analyze_disabled,
-        type="primary",
-        use_container_width=True,
-        key="analyze_button"  # Added fixed key
-    )
-
-    # Handle button click
-    if analyze_clicked and not analyze_disabled:
-        analyze_job_posting(job_url, job_text, custom_questions)
+    # 2. Is there at least one resume?
+    has_resume = bool(get_user_resumes(st.session_state.user_id))
     
-    # Show status message
-    if analyze_disabled:
-        if not has_resumes:
-            col2.info("⚠️ Upload a resume to get started")
-        elif not has_job_content:
-            col2.info("⚠️ Add a job posting to analyze")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Button is enabled only when both conditions are true
+    analyze_disabled = not (has_job and has_resume)
+    
+    # Always show the button
+    if st.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
+        # Only execute if we have both requirements
+        if has_job and has_resume:
+            analyze_job_posting(job_url, job_text, custom_questions)
 
 def render_resume_section():
     """Render resume management section"""
