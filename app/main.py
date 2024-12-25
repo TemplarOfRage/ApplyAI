@@ -19,6 +19,7 @@ import tempfile
 import os
 from utils.analyze import analyze_resume_for_job
 from utils.errors import AnalysisError
+from components.analysis_results import render_analysis_results
 
 def render_analyze_button(job_url, job_text, custom_questions):
     """Separate function just for the analyze button"""
@@ -111,8 +112,7 @@ def render_job_posting_section():
     
     # Show results if available
     if 'analysis_results' in st.session_state:
-        st.markdown("### Analysis Results")
-        st.markdown(st.session_state.analysis_results)
+        render_analysis_results(st.session_state.analysis_results)
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
