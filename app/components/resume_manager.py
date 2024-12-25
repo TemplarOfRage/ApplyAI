@@ -1,6 +1,6 @@
 import streamlit as st
-from ..utils.file_processing import extract_text_from_pdf
-from ..utils.db import save_resume
+from utils.file_processing import extract_text_from_pdf
+from utils.db import save_resume
 
 def render_resume_manager():
     """Component for managing resume uploads and edits"""

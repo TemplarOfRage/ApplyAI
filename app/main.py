@@ -2,9 +2,15 @@
 Main Streamlit application for ApplyAI.
 """
 import streamlit as st
-from .components.resume_manager import render_resume_manager
-from .components.analysis_results import render_analysis_results
-from .utils.auth import check_auth
+import sys
+import os
+
+# Add the app directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from components.resume_manager import render_resume_manager
+from components.analysis_results import render_analysis_results
+from utils.auth import check_auth
 
 def run():
     """Main app entry point"""
