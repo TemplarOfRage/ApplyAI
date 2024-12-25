@@ -53,20 +53,62 @@ def render_job_posting_section():
         )
         st.session_state.job_data['questions'] = custom_questions
 
-    # Simple conditions using session state
+    # Check conditions
     has_job = bool(st.session_state.job_data['url'] or st.session_state.job_data['text'])
     has_resume = bool(st.session_state.resumes) if 'resumes' in st.session_state else False
 
-    # Button is enabled only when both conditions are true
+    # Create columns for button and status
+    col1, col2 = st.columns([1, 4])
+
+    # Show analyze button
     analyze_disabled = not (has_job and has_resume)
     
-    if st.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
+    if col1.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
         if has_job and has_resume:
-            analyze_job_posting(
-                st.session_state.job_data['url'],
-                st.session_state.job_data['text'],
-                st.session_state.job_data['questions']
-            )
+            with st.spinner("Analyzing your resume against the job posting..."):
+                try:
+                    # Get the first resume for now (we can add resume selection later)
+                    resume = st.session_state.resumes[0]
+                    resume_content = resume[1]  # Get the content from the tuple
+                    
+                    # Prepare job content
+                    job_content = st.session_state.job_data['text']
+                    if st.session_state.job_data['url']:
+                        # TODO: Add URL scraping functionality
+                        job_content = f"URL: {st.session_state.job_data['url']}\n\n{job_content}"
+                    
+                    # Add custom questions if present
+                    if st.session_state.job_data['questions']:
+                        job_content += f"\n\nCustom Questions:\n{st.session_state.job_data['questions']}"
+                    
+                    # Make request to Claude
+                    response = analyze_resume_for_job(
+                        resume_content,
+                        job_content
+                    )
+                    
+                    # Store analysis results in session state
+                    if 'analysis_results' not in st.session_state:
+                        st.session_state.analysis_results = {}
+                    
+                    st.session_state.analysis_results['current'] = response
+                    
+                    # Show success message
+                    st.success("Analysis complete!")
+                    
+                except Exception as e:
+                    st.error(f"Error during analysis: {str(e)}")
+    else:
+        # Show helper message if button is disabled
+        if not has_resume:
+            col2.info("⚠️ Upload a resume to get started")
+        elif not has_job:
+            col2.info("⚠️ Add a job posting to analyze")
+
+    # Show analysis results if available
+    if 'analysis_results' in st.session_state and st.session_state.analysis_results.get('current'):
+        st.markdown("### Analysis Results")
+        st.markdown(st.session_state.analysis_results['current'])
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
