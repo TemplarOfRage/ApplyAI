@@ -110,12 +110,12 @@ def render_resume_section():
                 height: 700px;
                 border: none;
                 border-radius: 4px;
+                margin-top: 1rem;
             }
             .pdf-preview {
-                margin-top: 0.5rem;
-                margin-left: 3rem;
+                margin: 0.5rem 0 1rem 3rem;
                 padding: 1rem;
-                background: #f8f9fa;
+                background: white;
                 border-radius: 4px;
                 border: 1px solid #eee;
             }
@@ -134,6 +134,18 @@ def render_resume_section():
                 align-items: center;
                 gap: 0.5rem;
             }
+            /* Preview close button */
+            .close-preview {
+                margin-bottom: 0.5rem;
+            }
+            /* Hide default streamlit expander styling */
+            .streamlit-expanderHeader {
+                display: none !important;
+            }
+            .streamlit-expanderContent {
+                border: none !important;
+                padding: 0 !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -141,7 +153,7 @@ def render_resume_section():
     resumes = get_user_resumes(st.session_state.user_id)
     
     if resumes:
-        # Update table header to include Download column
+        # Create table header
         st.markdown("""
             <table class="resume-table">
                 <thead>
@@ -184,46 +196,54 @@ def render_resume_section():
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Download button
-            if cols[4].button("⬇️", key=f"download_{idx}_{hash(name)}", help="Download resume"):
-                file_content = get_resume_file(st.session_state.user_id, name)
-                if file_content:
-                    st.download_button(
-                        "Download",
-                        file_content,
-                        file_name=name,
-                        mime=file_type,
-                        key=f"actual_download_{idx}_{hash(name)}",
-                    )
+            # Download button - direct download
+            file_content = get_resume_file(st.session_state.user_id, name)
+            if file_content:
+                cols[4].download_button(
+                    "⬇️",
+                    file_content,
+                    file_name=name,
+                    mime=file_type,
+                    help="Download resume",
+                )
             
             # Show file preview only if explicitly requested
             if st.session_state.view_states.get(view_state_key, False):
-                st.markdown('<div class="pdf-preview">', unsafe_allow_html=True)
-                file_content = get_resume_file(st.session_state.user_id, name)
                 if file_content and file_type == "application/pdf":
+                    st.markdown('<div class="pdf-preview">', unsafe_allow_html=True)
+                    
+                    # Close button at the top
+                    if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}", 
+                               help="Close preview", use_container_width=False):
+                        del st.session_state.view_states[view_state_key]
+                        st.rerun()
+                    
                     try:
-                        # Add close button
-                        if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
-                            del st.session_state.view_states[view_state_key]
-                            st.rerun()
-                        
-                        # Try to display PDF inline (we can work on this more)
+                        # Use object tag for better PDF rendering
                         import base64
                         b64_pdf = base64.b64encode(file_content).decode('utf-8')
                         pdf_display = f'''
-                            <iframe
-                                src="data:application/pdf;base64,{b64_pdf}#zoom=FitH"
+                            <object
+                                data="data:application/pdf;base64,{b64_pdf}"
+                                type="application/pdf"
                                 width="100%"
-                                height="600px"
-                                style="border: none;"
-                            ></iframe>
+                                height="700px"
+                                style="border: none;">
+                                <embed
+                                    src="data:application/pdf;base64,{b64_pdf}"
+                                    type="application/pdf"
+                                    width="100%"
+                                    height="700px"
+                                    style="border: none;" />
+                            </object>
                         '''
                         st.markdown(pdf_display, unsafe_allow_html=True)
                     except Exception as e:
-                        st.error(f"Error displaying PDF: {str(e)}")
+                        st.error("Unable to display PDF preview")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.info("Preview not available for this file type")
-                st.markdown('</div>', unsafe_allow_html=True)
     
     # Add divider before uploader
     st.divider()
