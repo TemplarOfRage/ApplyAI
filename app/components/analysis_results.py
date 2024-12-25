@@ -15,6 +15,8 @@ def parse_analysis_sections(analysis_text):
     match = re.search(r'Match Score:?\s*(\d+)%', analysis_text)
     if match:
         sections['match_score'] = int(match.group(1))
+    else:
+        sections['match_score'] = 0  # Default to 0 if no match found
     
     # Extract other sections based on headers
     current_section = None
@@ -61,10 +63,10 @@ def render_analysis_results(analysis_text):
     
     with match_tab:
         st.markdown("#### Match Score")
-        score = sections.get('match_score', 0)
+        score = sections.get('match_score', 0)  # This is now guaranteed to be an int
         
         # Create a progress bar for the match score
-        st.progress(score/100)
+        st.progress(float(score)/100)
         st.markdown(f"### {score}%")
         
         # Add color coding
