@@ -134,138 +134,41 @@ def render_resume_section():
     if 'resumes' not in st.session_state:
         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
     
-    if 'edit_states' not in st.session_state:
-        st.session_state.edit_states = {}
-
-    # Update styles to be more compact
-    st.markdown("""
-        <style>
-            /* Center icons in columns */
-            div[data-testid="column"] {
-                text-align: center !important;
-            }
-            
-            /* Center button contents */
-            .stButton > button {
-                display: flex !important;
-                justify-content: center !important;
-                align-items: center !important;
-            }
-            
-            /* Existing resume table styles */
-            .resume-table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .resume-table th {
-                padding: 0.5rem;
-                text-align: left;
-                border-bottom: 1px solid #ddd;
-            }
-            .resume-table th:not(:first-child) {
-                text-align: center;
-            }
-            .file-name {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-            .file-icon {
-                opacity: 0.6;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    # Debug the resumes in session state
+    st.write("DEBUG - Resumes in session state:", st.session_state.resumes)
     
-    # Initialize delete confirmation state (but don't set it automatically)
-    if 'delete_confirmation' not in st.session_state:
-        st.session_state.delete_confirmation = None
-    
-    # Clear delete confirmation when uploading new file
-    if 'uploader_key' in st.session_state:
-        st.session_state.delete_confirmation = None
-    
-    if st.session_state.resumes:
-        # Create table header
-        st.markdown("""
-            <table class="resume-table">
-                <thead>
-                    <tr>
-                        <th style="width: 70%">Name</th>
-                        <th style="width: 10%; text-align: center">Edit</th>
-                        <th style="width: 10%; text-align: center">Download</th>
-                        <th style="width: 10%; text-align: center">Delete</th>
-                    </tr>
-                </thead>
-            </table>
-        """, unsafe_allow_html=True)
-        
-        for idx, (name, content, file_type) in enumerate(st.session_state.resumes):
-            cols = st.columns([7, 1, 1, 1])
-            
-            # Truncate filename if too long
-            display_name = name if len(name) < 40 else name[:37] + "..."
-            
-            with cols[0]:
-                st.markdown(f'<div class="file-name"><span class="file-icon">📄</span>{display_name}</div>', unsafe_allow_html=True)
-            
-            # Edit button
-            edit_key = f"edit_{idx}_{hash(name)}"
-            if cols[1].button("✏️", key=f"edit_btn_{idx}"):
-                st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
-            
-            # Show edit panel if active
-            if st.session_state.edit_states.get(edit_key, False):
-                with st.container():
-                    edited_content = st.text_area(
-                        "Edit extracted text:",
-                        value=content,
-                        height=300,
-                        key=f"content_{idx}_{hash(name)}"
-                    )
-                    
-                    if st.button("Save Changes", key=f"save_{idx}"):
-                        update_resume_content(st.session_state.user_id, name, edited_content)
-                        st.session_state.edit_states[edit_key] = False
-                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-            
-            # Download button
-            file_content = get_resume_file(st.session_state.user_id, name)
-            if file_content:
-                cols[2].download_button(
-                    "⬇️",
-                    file_content,
-                    file_name=name,
-                    mime=file_type,
-                )
-            
-            # Delete button
-            if cols[3].button("🗑️", key=f"del_btn_{idx}"):
-                if delete_resume(st.session_state.user_id, name):
-                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-
-    # File uploader section
-    uploaded_file = st.file_uploader(
-        "Upload another resume" if st.session_state.resumes else "Upload your first resume",
-        type=["pdf", "docx", "txt"],
-        key="resume_uploader"
+    uploaded_files = st.file_uploader(
+        "Upload Resume(s)",
+        type=['pdf', 'docx', 'txt'],
+        accept_multiple_files=True,
+        key='resume_uploader'
     )
     
-    # Handle file upload
-    if uploaded_file is not None:
-        try:
-            content, file_content = extract_text_from_file(uploaded_file)
-            if content and save_resume(
-                st.session_state.user_id,
-                uploaded_file.name,
-                content,
-                uploaded_file.type,
-                file_content
-            ):
-                # Update resumes in session state
-                st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-        except Exception as e:
-            st.error("Failed to process resume. Please try again.")
-            print(f"Error uploading resume: {str(e)}")
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            # Debug each uploaded file
+            st.write(f"DEBUG - Processing uploaded file: {uploaded_file.name}")
+            
+            # Check if this file is already uploaded
+            existing_names = [r[0] for r in st.session_state.resumes]
+            if uploaded_file.name not in existing_names:
+                try:
+                    content = extract_text_from_file(uploaded_file)
+                    st.write(f"DEBUG - Extracted content length: {len(content)}")
+                    
+                    # Add to database and session state
+                    save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type)
+                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                    
+                    st.success(f"Successfully uploaded: {uploaded_file.name}")
+                except Exception as e:
+                    st.error(f"Error processing {uploaded_file.name}: {str(e)}")
+            else:
+                st.warning(f"Resume already exists: {uploaded_file.name}")
+    
+    if st.session_state.resumes:
+        # Debug final resume list
+        st.write("DEBUG - Final resume list:", [r[0] for r in st.session_state.resumes])
 
 def run():
     """Main entry point for the application"""

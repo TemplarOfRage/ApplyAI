@@ -40,3 +40,36 @@ def get_user_analyses(user_id):
             WHERE user_id = ? 
             ORDER BY created_at DESC
         """, (user_id,)).fetchall() 
+
+def save_resume(user_id, filename, content, file_type):
+    """Save resume to database"""
+    with get_db() as conn:
+        # Check if resume already exists
+        existing = conn.execute(
+            "SELECT id FROM resumes WHERE user_id = ? AND filename = ?",
+            (user_id, filename)
+        ).fetchone()
+        
+        if existing:
+            # Update existing resume
+            conn.execute("""
+                UPDATE resumes 
+                SET content = ?, file_type = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND filename = ?
+            """, (content, file_type, user_id, filename))
+        else:
+            # Insert new resume
+            conn.execute("""
+                INSERT INTO resumes (user_id, filename, content, file_type)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, filename, content, file_type))
+
+def get_user_resumes(user_id):
+    """Get all resumes for a user"""
+    with get_db() as conn:
+        return conn.execute("""
+            SELECT filename, content, file_type 
+            FROM resumes 
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+        """, (user_id,)).fetchall() 
