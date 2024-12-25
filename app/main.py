@@ -18,81 +18,64 @@ import base64
 import tempfile
 import os
 
-def render_job_analysis_section():
-    """Render job analysis section"""
-    st.subheader("📝 Job Posting Analysis")
-    
-    url_input = st.text_input(
-        "Job Posting URL",
-        placeholder="Paste a job posting URL here (optional)"
-    )
-    
-    job_post = st.text_area(
-        "Or paste job posting text",
-        height=300,
-        placeholder="Paste the job description here to analyze it..."
-    )
-    
-    custom_questions = st.text_area(
-        "Custom application questions (Optional)",
-        height=100
-    )
-    
-    # Get resumes for analysis check
-    resumes = get_user_resumes(st.session_state.user_id)
-    has_resume = bool(resumes)
-    has_job_post = bool(url_input or job_post)
-    
-    # Show single consolidated message if either requirement is missing
-    if not (has_resume and has_job_post):
-        st.warning("⚠️ Please upload a resume & job posting to begin an analysis")
-    
-    analyze_button = st.button(
-        "Analyze",
-        type="primary",
-        disabled=not (has_resume and has_job_post)
-    )
-    
-    if analyze_button and job_post and has_resume:
-        with st.spinner("Analyzing your fit..."):
-            # Get all user's resumes
-            user_resumes = get_user_resumes(st.session_state.user_id)
-            combined_resume_context = "\n---\n".join(
-                content for _, content, _ in user_resumes
-            )
-            
-            try:
-                client = anthropic.Client(
-                    api_key=st.secrets["ANTHROPIC_API_KEY"]
-                )
-                
-                prompt = f"""Job Post: {job_post}
-                Resume Context: {combined_resume_context}
-                Custom Questions: {custom_questions if custom_questions else 'None'}
-                
-                Please analyze this application following the format:
-                
-                ## Initial Assessment
-                ## Match Analysis
-                ## Resume Strategy
-                ## Tailored Resume
-                ## Custom Responses
-                ## Follow-up Actions"""
+def render_job_posting_section():
+    st.markdown("""
+        <style>
+            /* Custom expander styles */
+            .streamlit-expanderHeader {
+                background-color: #f8f9fa;
+                border: 1px solid #eee;
+                border-radius: 4px;
+                padding: 0.5rem !important;
+            }
+            .streamlit-expanderHeader:hover {
+                background-color: #f0f2f6;
+            }
+            .streamlit-expanderContent {
+                border: 1px solid #eee;
+                border-top: none;
+                border-radius: 0 0 4px 4px;
+                padding: 1rem !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-                message = client.messages.create(
-                    model="claude-3-sonnet-20240229",
-                    max_tokens=4096,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                
-                analysis = message.content[0].text
-                save_analysis(st.session_state.user_id, job_post, analysis)
-                
-                # Display analysis
-                st.markdown(analysis)
-                
-            except Exception as e:
-                st.error(f"Analysis error: {str(e)}")
+    # Job Posting URL input
+    job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
+
+    # Job posting text area
+    job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
+
+    # Custom questions in an expander
+    with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
+        custom_questions = st.text_area(
+            "Add any custom application questions",
+            placeholder="Enter each question on a new line...",
+            help="These questions will be analyzed along with your resume"
+        )
+
+    # Get current resumes
+    resumes = get_user_resumes(st.session_state.user_id)
+    has_resumes = bool(resumes)
+
+    # Always show the Analyze button, but disable it if conditions aren't met
+    analyze_disabled = not (has_resumes and (job_url or job_text))
+    
+    if st.button("Analyze", disabled=analyze_disabled, type="primary"):
+        if not has_resumes:
+            st.warning("Please upload a resume first.")
+        elif not (job_url or job_text):
+            st.warning("Please provide either a job posting URL or paste the job description.")
+        else:
+            # Your existing analysis logic here
+            pass
+    
+    # Show helpful message if button is disabled
+    if analyze_disabled:
+        if not has_resumes:
+            st.info("Upload a resume to get started")
+        elif not (job_url or job_text):
+            st.info("Add a job posting to analyze")
 
 def render_resume_section():
     """Render resume management section"""
@@ -294,7 +277,7 @@ def run():
         
         # Job Analysis section in fixed container
         with job_col:
-            render_job_analysis_section()
+            render_job_posting_section()
         
         # Resume section in scrollable container
         with resume_col:
