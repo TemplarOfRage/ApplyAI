@@ -6,7 +6,6 @@ Analysis history services for ApplyAI.
 import streamlit as st
 from datetime import datetime
 import sqlite3
-from app.config import get_api_key
 from .auth import get_connection
 
 def extract_text_from_url(url):
