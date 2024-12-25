@@ -21,21 +21,10 @@ import os
 def render_job_posting_section():
     st.markdown("""
         <style>
-            /* Custom expander styles */
-            .streamlit-expanderHeader {
-                background-color: #f8f9fa;
-                border: 1px solid #eee;
-                border-radius: 4px;
-                padding: 0.5rem !important;
-            }
-            .streamlit-expanderHeader:hover {
-                background-color: #f0f2f6;
-            }
-            .streamlit-expanderContent {
-                border: 1px solid #eee;
-                border-top: none;
-                border-radius: 0 0 4px 4px;
-                padding: 1rem !important;
+            .analyze-section {
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid #eee;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -54,6 +43,9 @@ def render_job_posting_section():
             help="These questions will be analyzed along with your resume"
         )
 
+    # ALWAYS create the analyze section
+    st.markdown('<div class="analyze-section">', unsafe_allow_html=True)
+    
     # Get current resumes
     resumes = get_user_resumes(st.session_state.user_id)
     has_resumes = bool(resumes)
@@ -62,19 +54,28 @@ def render_job_posting_section():
     # Create columns for button and message
     col1, col2 = st.columns([1, 4])
 
-    # Always show the button in the first column
+    # ALWAYS show the button, regardless of conditions
     analyze_disabled = not (has_resumes and has_job_content)
-    if col1.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
-        if has_resumes and has_job_content:
-            # Your existing analysis logic here
-            analyze_job_posting(job_url, job_text, custom_questions)
+    analyze_clicked = col1.button(
+        "Analyze",
+        disabled=analyze_disabled,
+        type="primary",
+        use_container_width=True,
+        key="analyze_button"  # Added fixed key
+    )
+
+    # Handle button click
+    if analyze_clicked and not analyze_disabled:
+        analyze_job_posting(job_url, job_text, custom_questions)
     
-    # Show status message in the second column
+    # Show status message
     if analyze_disabled:
         if not has_resumes:
             col2.info("⚠️ Upload a resume to get started")
         elif not has_job_content:
             col2.info("⚠️ Add a job posting to analyze")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def render_resume_section():
     """Render resume management section"""
