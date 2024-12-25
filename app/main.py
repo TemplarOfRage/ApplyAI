@@ -95,57 +95,16 @@ def render_resume_section():
     """Render resume management section"""
     st.subheader("📄 Resume Management")
     
-    # Custom CSS for clean layout
+    # Update CSS to be more specific and forceful
     st.markdown("""
         <style>
-            /* Table styles */
-            .resume-table {
-                font-size: 0.85rem;
-                width: 100%;
-                margin-top: 1rem;
-                border-collapse: collapse;
-            }
-            .resume-table th, .resume-table td {
-                padding: 0.5rem;
-                border-bottom: 1px solid #eee;
-                text-align: left;
-            }
-            .resume-table th {
-                color: #666;
-                font-weight: 400;
-            }
-            /* Hide expander chevron */
-            .streamlit-expanderHeader {
-                display: none !important;
-            }
-            /* Clean button styles */
-            .stButton button {
-                padding: 0.25rem 0.5rem;
-                font-size: 0.8rem;
-                width: 2rem !important;
-                height: 2rem !important;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            /* File name styles */
-            .file-name {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-            .file-icon {
-                color: #666;
-                font-size: 0.9rem;
-            }
-            /* Hide default expander styling */
-            .streamlit-expanderContent {
-                border: none !important;
+            /* Force horizontal text in buttons */
+            .stButton > button {
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
+                white-space: nowrap !important;
+                height: auto !important;
                 padding: 0.5rem !important;
-            }
-            /* Hide expander header completely */
-            .streamlit-expanderHeader {
-                display: none !important;
             }
             /* Clean edit panel styling */
             .edit-panel {
@@ -172,8 +131,6 @@ def render_resume_section():
             }
             .action-buttons button {
                 width: 100% !important;
-                padding: 0.5rem !important;
-                font-size: 0.9rem !important;
             }
             /* Remove extra margins */
             .stTextArea div {
@@ -185,8 +142,14 @@ def render_resume_section():
         </style>
     """, unsafe_allow_html=True)
     
-    # Show existing resumes in a table if any exist
+    # Initialize session state for edit panels if not exists
+    if 'edit_states' not in st.session_state:
+        st.session_state.edit_states = {}
+    
+    # Get current resumes first
     resumes = get_user_resumes(st.session_state.user_id)
+    
+    # Show existing resumes in a table if any exist
     if resumes:
         # Create table header
         st.markdown("""
@@ -214,22 +177,30 @@ def render_resume_section():
             # View button
             view_key = f"view_{idx}_{hash(name)}"
             if cols[1].button("👁️", key=view_key, help="View original file"):
-                # Toggle the view state
-                current_state = st.session_state.get(f"show_{view_key}", False)
-                st.session_state[f"show_{view_key}"] = not current_state
-                # Ensure edit mode is closed when viewing
-                if f"edit_{view_key}" in st.session_state:
-                    del st.session_state[f"edit_{view_key}"]
+                # Toggle view state
+                st.session_state[view_key] = not st.session_state.get(view_key, False)
+                # Close edit panel if open
+                edit_key = f"edit_{idx}_{hash(name)}"
+                if edit_key in st.session_state.edit_states:
+                    del st.session_state.edit_states[edit_key]
             
             # Edit button
             edit_key = f"edit_{idx}_{hash(name)}"
             if cols[2].button("✏️", key=edit_key, help="Edit extracted text"):
                 # Toggle edit state
-                current_state = st.session_state.get(f"edit_{view_key}", False)
-                st.session_state[f"edit_{view_key}"] = not current_state
+                st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
+                # Close view panel if open
+                if view_key in st.session_state:
+                    del st.session_state[view_key]
+            
+            # Delete button
+            del_key = f"del_{idx}_{hash(name)}"
+            if cols[3].button("🗑️", key=del_key, help="Delete resume"):
+                if delete_resume(st.session_state.user_id, name):
+                    st.rerun()
             
             # Show edit panel only if explicitly opened
-            if st.session_state.get(f"edit_{view_key}", False):
+            if st.session_state.edit_states.get(edit_key, False):
                 st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
                 st.write("Edit extracted text:")
                 edited_content = st.text_area(
@@ -247,40 +218,15 @@ def render_resume_section():
                     if st.button("Save Changes", key=f"save_{idx}_{hash(name)}", 
                                type="primary", use_container_width=True):
                         update_resume_content(st.session_state.user_id, name, edited_content)
-                        del st.session_state[f"edit_{view_key}"]
+                        del st.session_state.edit_states[edit_key]
                         st.rerun()
                 with col2:
                     if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
                                type="secondary", use_container_width=True):
-                        del st.session_state[f"edit_{view_key}"]
+                        del st.session_state.edit_states[edit_key]
                         st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Delete button
-            del_key = f"del_{idx}_{hash(name)}"
-            if cols[3].button("🗑️", key=del_key, help="Delete resume"):
-                if delete_resume(st.session_state.user_id, name):
-                    st.rerun()
-            
-            # Show content based on state
-            if st.session_state.get(f"show_{view_key}", False):
-                with st.expander("", expanded=True):
-                    file_content = get_resume_file(st.session_state.user_id, name)
-                    if file_content and file_type == "application/pdf":
-                        import base64
-                        base64_pdf = base64.b64encode(file_content).decode('utf-8')
-                        pdf_display = f'''
-                            <iframe
-                                src="data:application/pdf;base64,{base64_pdf}"
-                                width="100%"
-                                height="600"
-                                style="border: none;"
-                            ></iframe>
-                        '''
-                        st.markdown(pdf_display, unsafe_allow_html=True)
-                    else:
-                        st.info("Preview not available for this file type")
     
     # File uploader section
     st.divider()
