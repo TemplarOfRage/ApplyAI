@@ -47,8 +47,17 @@ def save_resume(user_id, filename, content, file_type):
             # Debug info
             st.write(f"DEBUG - Saving resume: {filename}")
             st.write(f"DEBUG - User ID: {user_id}")
-            st.write(f"DEBUG - Content length: {len(content)}")
-            st.write(f"DEBUG - File type: {file_type}")
+            
+            # Convert content to string if it's a tuple
+            if isinstance(content, tuple):
+                st.write("DEBUG - Content is a tuple, converting to string")
+                content = str(content)
+            elif content is None:
+                st.write("DEBUG - Content is None!")
+                return False
+                
+            # Ensure file_type is a string
+            file_type = str(file_type)
             
             # First, check if table exists
             conn.execute("""
@@ -78,21 +87,20 @@ def save_resume(user_id, filename, content, file_type):
                         file_type = ?, 
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND filename = ?
-                """, (content, file_type, user_id, filename))
+                """, (str(content), file_type, user_id, filename))
                 st.write(f"DEBUG - Updated existing resume: {filename}")
             else:
                 # Insert new resume
                 conn.execute("""
                     INSERT INTO resumes (user_id, filename, content, file_type)
                     VALUES (?, ?, ?, ?)
-                """, (user_id, filename, content, file_type))
+                """, (user_id, filename, str(content), file_type))
                 st.write(f"DEBUG - Inserted new resume: {filename}")
             
             return True
             
         except Exception as e:
             st.error(f"Database error saving resume {filename}: {str(e)}")
-            # Print full error details
             import traceback
             st.write("DEBUG - Full error:", traceback.format_exc())
             return False

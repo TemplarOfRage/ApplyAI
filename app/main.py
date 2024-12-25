@@ -148,15 +148,27 @@ def render_resume_section():
                 st.write(f"DEBUG - Processing file: {uploaded_file.name}")
                 st.write(f"DEBUG - File type: {uploaded_file.type}")
                 
+                # Extract text
                 content = extract_text_from_file(uploaded_file)
-                st.write(f"DEBUG - Extracted content length: {len(content)}")
                 
-                if save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                    st.success(f"Successfully uploaded: {uploaded_file.name}")
-                    # Refresh resumes in session state
-                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                if content:
+                    st.write(f"DEBUG - Content type: {type(content)}")
+                    st.write(f"DEBUG - Content length: {len(content)}")
+                    
+                    # Save to database
+                    if save_resume(
+                        user_id=st.session_state.user_id,
+                        filename=uploaded_file.name,
+                        content=content,
+                        file_type=uploaded_file.type
+                    ):
+                        st.success(f"Successfully uploaded: {uploaded_file.name}")
+                        # Refresh resumes in session state
+                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                    else:
+                        st.error(f"Failed to save {uploaded_file.name}")
                 else:
-                    st.error(f"Failed to save {uploaded_file.name}")
+                    st.error(f"No content extracted from {uploaded_file.name}")
                     
             except Exception as e:
                 st.error(f"Error processing {uploaded_file.name}: {str(e)}")
