@@ -111,39 +111,46 @@ def render_resume_section():
                 border-collapse: collapse;
                 margin-bottom: 1rem;
             }
-            .resume-table th, .resume-table td {
-                padding: 0.75rem;
-                text-align: left;
-                border-bottom: 1px solid #eee;
-            }
             .resume-table th {
-                font-weight: 500;
+                padding: 0.75rem;
                 color: #666;
-                text-align: center;
+                font-weight: 500;
+                border-bottom: 1px solid #eee;
+                text-align: center !important;
             }
-            /* Center align action columns */
-            .stButton {
-                text-align: center;
-                display: flex;
+            .resume-table th:first-child {
+                text-align: left !important;
+            }
+            /* Center align action buttons */
+            div[data-testid="column"] {
+                text-align: center !important;
+            }
+            div[data-testid="column"]:first-child {
+                text-align: left !important;
+            }
+            /* Remove button styling completely */
+            .stButton > button {
+                all: unset;
+                cursor: pointer;
+                font-size: 1.2rem;
+                display: inline-flex;
+                align-items: center;
                 justify-content: center;
             }
-            /* Remove button styling */
-            .stButton > button {
-                background: none;
-                border: none;
-                padding: 0;
-                margin: 0;
+            .stDownloadButton > button {
+                all: unset;
+                cursor: pointer;
                 font-size: 1.2rem;
-            }
-            .stButton > button:hover {
-                background: none;
-                border: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
             }
             /* File name styles */
             .file-name {
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
+                padding: 0.75rem 0;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -152,12 +159,12 @@ def render_resume_section():
     resumes = get_user_resumes(st.session_state.user_id)
     
     if resumes:
-        # Create table header with proper column order
+        # Create table header
         st.markdown("""
             <table class="resume-table">
                 <thead>
                     <tr>
-                        <th style="width: 70%; text-align: left">Name</th>
+                        <th style="width: 70%">Name</th>
                         <th style="width: 10%">Edit</th>
                         <th style="width: 10%">Download</th>
                         <th style="width: 10%">Delete</th>
@@ -192,30 +199,24 @@ def render_resume_section():
                     help="Download resume",
                 )
             
-            # Delete button with confirmation
+            # Delete button with toast confirmation
             delete_key = f"delete_{idx}_{hash(name)}"
-            if delete_key not in st.session_state:
-                st.session_state[delete_key] = False
-                
+            
             if cols[3].button("🗑️", key=f"del_btn_{idx}", help="Delete resume"):
-                st.session_state[delete_key] = True
-                
-            # Show delete confirmation
-            if st.session_state[delete_key]:
-                with st.container():
-                    st.markdown('<div style="margin: 1rem 0 1rem 3rem;">', unsafe_allow_html=True)
-                    st.warning(f"Are you sure you want to delete {name}?")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Yes, delete it", key=f"confirm_del_{idx}", type="primary"):
-                            if delete_resume(st.session_state.user_id, name):
-                                st.session_state[delete_key] = False
-                                st.rerun()
-                    with col2:
-                        if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
-                            st.session_state[delete_key] = False
+                # Show toast with confirmation buttons
+                confirmation = st.toast(
+                    f"Delete {name}?",
+                    icon="🗑️"
+                )
+                col1, col2 = confirmation.columns(2)
+                with col1:
+                    if st.button("Confirm", key=f"confirm_del_{idx}", type="primary"):
+                        if delete_resume(st.session_state.user_id, name):
+                            st.toast("File deleted successfully", icon="✅")
                             st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+                with col2:
+                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
+                        st.rerun()
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
