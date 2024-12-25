@@ -98,6 +98,35 @@ def render_resume_section():
     """Render resume management section"""
     st.subheader("📄 Resume Management")
     
+    # Add PDF.js viewer resources in the header
+    st.markdown("""
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script>
+            // Set worker source
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        </script>
+        <style>
+            /* PDF Viewer styles */
+            .pdf-container {
+                width: 100%;
+                height: 600px;
+                border: 1px solid #eee;
+                border-radius: 4px;
+                overflow: hidden;
+                background: white;
+            }
+            #pdf-viewer {
+                width: 100%;
+                height: 100%;
+            }
+            .pdf-toolbar {
+                padding: 8px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #eee;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
     # Update CSS to be more specific and forceful
     st.markdown("""
         <style>
@@ -215,16 +244,75 @@ def render_resume_section():
                         import base64
                         b64_pdf = base64.b64encode(file_content).decode('utf-8')
                         
-                        # Embed PDF viewer with specific browser settings
-                        pdf_viewer = f"""
-                            <div style="width: 100%; height: 600px; overflow: hidden; border-radius: 4px; border: 1px solid #eee;">
-                                <iframe
-                                    src="data:application/pdf;base64,{b64_pdf}#toolbar=0&navpanes=0"
-                                    width="100%"
-                                    height="100%"
-                                    style="border: none; background: white;"
-                                    sandbox="allow-scripts allow-same-origin"
-                                ></iframe>
+                        # Create PDF viewer with PDF.js
+                        viewer_html = f"""
+                            <div class="pdf-container">
+                                <div class="pdf-toolbar">
+                                    <button onclick="document.getElementById('pdf-canvas').previousPage()">Previous</button>
+                                    <span id="page-num"></span> / <span id="page-count"></span>
+                                    <button onclick="document.getElementById('pdf-canvas').nextPage()">Next</button>
+                                    <button onclick="document.getElementById('pdf-canvas').zoomIn()">Zoom In</button>
+                                    <button onclick="document.getElementById('pdf-canvas').zoomOut()">Zoom Out</button>
+                                </div>
+                                <canvas id="pdf-canvas"></canvas>
+                                <script>
+                                    // Load the PDF
+                                    const loadingTask = pdfjsLib.getDocument({{
+                                        data: atob('{b64_pdf}')
+                                    }});
+                                    
+                                    loadingTask.promise.then(function(pdf) {{
+                                        const canvas = document.getElementById('pdf-canvas');
+                                        const context = canvas.getContext('2d');
+                                        let currentPage = 1;
+                                        const scale = 1.5;
+                                        
+                                        // Update page count
+                                        document.getElementById('page-count').textContent = pdf.numPages;
+                                        
+                                        function renderPage(pageNum) {{
+                                            pdf.getPage(pageNum).then(function(page) {{
+                                                const viewport = page.getViewport({{scale: scale}});
+                                                canvas.height = viewport.height;
+                                                canvas.width = viewport.width;
+                                                
+                                                const renderContext = {{
+                                                    canvasContext: context,
+                                                    viewport: viewport
+                                                }};
+                                                
+                                                page.render(renderContext);
+                                                document.getElementById('page-num').textContent = pageNum;
+                                            }});
+                                        }}
+                                        
+                                        // Initial render
+                                        renderPage(currentPage);
+                                        
+                                        // Add navigation methods
+                                        canvas.previousPage = function() {{
+                                            if (currentPage <= 1) return;
+                                            currentPage--;
+                                            renderPage(currentPage);
+                                        }};
+                                        
+                                        canvas.nextPage = function() {{
+                                            if (currentPage >= pdf.numPages) return;
+                                            currentPage++;
+                                            renderPage(currentPage);
+                                        }};
+                                        
+                                        canvas.zoomIn = function() {{
+                                            scale *= 1.2;
+                                            renderPage(currentPage);
+                                        }};
+                                        
+                                        canvas.zoomOut = function() {{
+                                            scale *= 0.8;
+                                            renderPage(currentPage);
+                                        }};
+                                    }});
+                                </script>
                             </div>
                         """
                         
@@ -234,7 +322,7 @@ def render_resume_section():
                             st.rerun()
                         
                         # Display the PDF viewer
-                        st.markdown(pdf_viewer, unsafe_allow_html=True)
+                        st.markdown(viewer_html, unsafe_allow_html=True)
                     else:
                         st.info("Preview not available for this file type")
             
