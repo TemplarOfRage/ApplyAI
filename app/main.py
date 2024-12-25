@@ -129,6 +129,13 @@ def render_job_posting_section():
     if 'analysis_results' in st.session_state:
         render_analysis_results(st.session_state.analysis_results)
 
+def truncate_filename(filename, max_length=30):
+    """Truncate filename if too long"""
+    if len(filename) <= max_length:
+        return filename
+    name, ext = os.path.splitext(filename)
+    return name[:max_length-5] + '...' + ext
+
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
     if 'resumes' not in st.session_state:
@@ -145,7 +152,6 @@ def render_resume_section():
     with st.expander("🔍 Debug Information", expanded=False):
         st.markdown("""
             <style>
-                /* Debug container styles */
                 .debug-text {
                     font-size: 0.7em;
                     color: #666;
@@ -220,8 +226,9 @@ def render_resume_section():
             
             cols = st.columns([3, 1.5, 1, 1, 1])
             
-            # Filename
-            cols[0].markdown(f"📄 {name}")
+            # Filename (truncated)
+            truncated_name = truncate_filename(name)
+            cols[0].markdown(f"📄 {truncated_name}")
             
             # Last Updated
             update_time = updated_at or created_at or "Unknown"
