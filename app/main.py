@@ -98,58 +98,51 @@ def render_resume_section():
     """Render resume management section"""
     st.subheader("📄 Resume Management")
     
-    # Initialize view states if not exists
-    if 'view_states' not in st.session_state:
-        st.session_state.view_states = {}
+    # Initialize session state for edit panels
+    if 'edit_states' not in st.session_state:
+        st.session_state.edit_states = {}
     
-    # Add PDF.js viewer styles
+    # Add styles
     st.markdown("""
         <style>
-            .pdf-viewer {
+            /* Table styles */
+            .resume-table {
                 width: 100%;
-                height: 700px;
-                border: none;
-                border-radius: 4px;
-                margin-top: 1rem;
+                border-collapse: collapse;
+                margin-bottom: 1rem;
             }
-            .pdf-preview {
+            .resume-table th, .resume-table td {
+                padding: 0.75rem;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+            }
+            .resume-table th {
+                font-weight: 500;
+                color: #666;
+            }
+            /* File name styles */
+            .file-name {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            /* Edit panel styles */
+            .edit-panel {
                 margin: 0.5rem 0 1rem 3rem;
                 padding: 1rem;
                 background: white;
                 border-radius: 4px;
                 border: 1px solid #eee;
             }
-            /* Table styles */
-            .resume-table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .resume-table th, .resume-table td {
-                padding: 0.5rem;
-                text-align: left;
-                border-bottom: 1px solid #eee;
-            }
-            .file-name {
+            .edit-actions {
                 display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
-            /* Preview close button */
-            .close-preview {
-                margin-bottom: 0.5rem;
-            }
-            /* Hide default streamlit expander styling */
-            .streamlit-expanderHeader {
-                display: none !important;
-            }
-            .streamlit-expanderContent {
-                border: none !important;
-                padding: 0 !important;
+                gap: 1rem;
+                margin-top: 1rem;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    # Get current resumes first
+    # Get current resumes
     resumes = get_user_resumes(st.session_state.user_id)
     
     if resumes:
@@ -158,8 +151,7 @@ def render_resume_section():
             <table class="resume-table">
                 <thead>
                     <tr>
-                        <th style="width: 60%">Name</th>
-                        <th style="width: 10%; text-align: center">View</th>
+                        <th style="width: 70%">Name</th>
                         <th style="width: 10%; text-align: center">Edit</th>
                         <th style="width: 10%; text-align: center">Delete</th>
                         <th style="width: 10%; text-align: center">Download</th>
@@ -169,7 +161,7 @@ def render_resume_section():
         """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
-            cols = st.columns([6, 1, 1, 1, 1])
+            cols = st.columns([7, 1, 1, 1])
             
             # Truncate filename if too long
             display_name = name if len(name) < 40 else name[:37] + "..."
@@ -177,29 +169,21 @@ def render_resume_section():
             with cols[0]:
                 st.markdown(f'<div class="file-name"><span class="file-icon">📄</span>{display_name}</div>', unsafe_allow_html=True)
             
-            # View button
-            view_btn_key = f"view_btn_{idx}_{hash(name)}"
-            view_state_key = f"view_state_{idx}_{hash(name)}"
-            
-            if cols[1].button("👁️", key=view_btn_key, help="View original file"):
-                current_state = st.session_state.view_states.get(view_state_key, False)
-                st.session_state.view_states[view_state_key] = not current_state
+            # Edit button
+            edit_key = f"edit_{idx}_{hash(name)}"
+            if cols[1].button("✏️", key=f"edit_btn_{idx}", help="Edit extracted text"):
+                st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
                 st.rerun()
             
-            # Edit button
-            edit_btn_key = f"edit_btn_{idx}_{hash(name)}"
-            if cols[2].button("✏️", key=edit_btn_key, help="Edit extracted text"):
-                st.session_state[f"edit_{idx}"] = True
-            
             # Delete button
-            if cols[3].button("🗑️", key=f"del_{idx}_{hash(name)}", help="Delete resume"):
+            if cols[2].button("🗑️", key=f"del_{idx}", help="Delete resume"):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Download button - direct download
+            # Download button
             file_content = get_resume_file(st.session_state.user_id, name)
             if file_content:
-                cols[4].download_button(
+                cols[3].download_button(
                     "⬇️",
                     file_content,
                     file_name=name,
@@ -207,43 +191,29 @@ def render_resume_section():
                     help="Download resume",
                 )
             
-            # Show file preview only if explicitly requested
-            if st.session_state.view_states.get(view_state_key, False):
-                if file_content and file_type == "application/pdf":
-                    st.markdown('<div class="pdf-preview">', unsafe_allow_html=True)
-                    
-                    # Close button at the top
-                    if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}", 
-                               help="Close preview", use_container_width=False):
-                        del st.session_state.view_states[view_state_key]
+            # Show edit panel if requested
+            if st.session_state.edit_states.get(edit_key, False):
+                st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
+                
+                edited_content = st.text_area(
+                    "Edit extracted text:",
+                    value=content,
+                    height=300,
+                    key=f"content_{idx}_{hash(name)}"
+                )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Save Changes", key=f"save_{idx}", type="primary"):
+                        update_resume_content(st.session_state.user_id, name, edited_content)
+                        del st.session_state.edit_states[edit_key]
                         st.rerun()
-                    
-                    try:
-                        # Use object tag for better PDF rendering
-                        import base64
-                        b64_pdf = base64.b64encode(file_content).decode('utf-8')
-                        pdf_display = f'''
-                            <object
-                                data="data:application/pdf;base64,{b64_pdf}"
-                                type="application/pdf"
-                                width="100%"
-                                height="700px"
-                                style="border: none;">
-                                <embed
-                                    src="data:application/pdf;base64,{b64_pdf}"
-                                    type="application/pdf"
-                                    width="100%"
-                                    height="700px"
-                                    style="border: none;" />
-                            </object>
-                        '''
-                        st.markdown(pdf_display, unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error("Unable to display PDF preview")
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    st.info("Preview not available for this file type")
+                with col2:
+                    if st.button("Cancel", key=f"cancel_{idx}", type="secondary"):
+                        del st.session_state.edit_states[edit_key]
+                        st.rerun()
+                
+                st.markdown('</div>', unsafe_allow_html=True)
     
     # Add divider before uploader
     st.divider()
