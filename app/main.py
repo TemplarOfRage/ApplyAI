@@ -111,52 +111,22 @@ def render_resume_section():
                 border: none;
                 border-radius: 4px;
             }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    # Update CSS to be more specific and forceful
-    st.markdown("""
-        <style>
-            /* Force horizontal text in buttons */
-            .stButton > button {
-                writing-mode: horizontal-tb !important;
-                text-orientation: mixed !important;
-                white-space: nowrap !important;
-                height: auto !important;
-                padding: 0.5rem !important;
+            /* Hide default expander styling */
+            .streamlit-expanderHeader {
+                display: none;
             }
-            /* Clean edit panel styling */
-            .edit-panel {
-                background-color: #f8f9fa;
-                padding: 1rem;
-                border-radius: 4px;
-                margin: 0.5rem 0;
+            .streamlit-expanderContent {
+                border: none !important;
+                padding-top: 0 !important;
             }
-            /* Improved text area styling */
-            .stTextArea textarea {
-                font-family: 'Courier New', Courier, monospace !important;
-                font-size: 0.9rem !important;
-                line-height: 1.4 !important;
-                padding: 0.5rem !important;
-                white-space: pre-wrap !important;
-                overflow-wrap: break-word !important;
-            }
-            /* Button styling */
-            .action-buttons {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
+            /* PDF preview container */
+            .pdf-preview {
                 margin-top: 1rem;
-            }
-            .action-buttons button {
-                width: 100% !important;
-            }
-            /* Remove extra margins */
-            .stTextArea div {
-                margin-bottom: 0 !important;
-            }
-            .element-container {
-                margin-bottom: 0.5rem !important;
+                margin-left: 3rem;  /* Indent to align with file name */
+                padding: 1rem;
+                background: #f8f9fa;
+                border-radius: 4px;
+                border: 1px solid #eee;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -180,6 +150,9 @@ def render_resume_section():
         """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
+            # File row container
+            st.markdown('<div class="file-row">', unsafe_allow_html=True)
+            
             cols = st.columns([7, 1, 1, 1])
             
             # Truncate filename if too long
@@ -201,96 +174,45 @@ def render_resume_section():
                     st.session_state.view_states[view_state_key] = True
                 st.rerun()
             
-            # Edit button
+            # Edit and Delete buttons
             edit_btn_key = f"edit_btn_{idx}_{hash(name)}"
-            edit_state_key = f"edit_state_{idx}_{hash(name)}"
             if cols[2].button("✏️", key=edit_btn_key, help="Edit extracted text"):
-                # Toggle edit state
-                st.session_state.edit_states[edit_state_key] = not st.session_state.edit_states.get(edit_state_key, False)
-                # Close view panel if open
-                if view_state_key in st.session_state.view_states:
-                    del st.session_state.view_states[view_state_key]
+                st.session_state[f"edit_{idx}"] = True
             
-            # Delete button
-            del_key = f"del_{idx}_{hash(name)}"
-            if cols[3].button("🗑️", key=del_key, help="Delete resume"):
+            if cols[3].button("🗑️", key=f"del_{idx}_{hash(name)}", help="Delete resume"):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
             # Show file preview if requested
             if st.session_state.view_states.get(view_state_key, False):
-                with st.expander("", expanded=False):  # Set expanded=False by default
-                    file_content = get_resume_file(st.session_state.user_id, name)
-                    if file_content and file_type == "application/pdf":
-                        # Create a temporary file and serve it
-                        import tempfile
-                        import os
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                            tmp_file.write(file_content)
-                            tmp_file.flush()
-                            
-                            # Read the file back as bytes
-                            with open(tmp_file.name, 'rb') as f:
-                                pdf_bytes = f.read()
-                            
-                            # Clean up the temp file
-                            os.unlink(tmp_file.name)
-                            
-                            # Convert to base64
-                            import base64
-                            b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-                            
-                            # Use local PDF.js viewer
-                            viewer_html = f"""
-                                <iframe 
-                                    src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{b64_pdf}"
-                                    class="pdf-viewer"
-                                    title="PDF Viewer"
-                                ></iframe>
-                            """
-                            
-                            # Add close button above viewer
-                            if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
-                                del st.session_state.view_states[view_state_key]
-                                st.rerun()
-                            
-                            # Display the PDF viewer
-                            st.markdown(viewer_html, unsafe_allow_html=True)
-                    else:
-                        st.info("Preview not available for this file type")
+                st.markdown('<div class="pdf-preview">', unsafe_allow_html=True)
+                file_content = get_resume_file(st.session_state.user_id, name)
+                if file_content and file_type == "application/pdf":
+                    import base64
+                    
+                    # Convert to base64 directly from the file content
+                    b64_pdf = base64.b64encode(file_content).decode('utf-8')
+                    
+                    # Add close button
+                    if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
+                        del st.session_state.view_states[view_state_key]
+                        st.rerun()
+                    
+                    # Use PDF.js viewer with direct base64 data
+                    st.markdown(
+                        f'<iframe src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{b64_pdf}#zoom=page-fit" class="pdf-viewer"></iframe>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.info("Preview not available for this file type")
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Show edit panel only if explicitly opened
-            if st.session_state.edit_states.get(edit_state_key, False):
-                st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
-                st.write("Edit extracted text:")
-                edited_content = st.text_area(
-                    "",
-                    value=content,
-                    height=400,
-                    key=f"content_{idx}_{hash(name)}",
-                    label_visibility="collapsed"
-                )
-                
-                # Buttons with grid layout
-                st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Save Changes", key=f"save_{idx}_{hash(name)}", 
-                               type="primary", use_container_width=True):
-                        update_resume_content(st.session_state.user_id, name, edited_content)
-                        del st.session_state.edit_states[edit_state_key]
-                        st.rerun()
-                with col2:
-                    if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
-                               type="secondary", use_container_width=True):
-                        del st.session_state.edit_states[edit_state_key]
-                        st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)  # Close file row container
+    
+    # Add divider before uploader
+    st.divider()
     
     # File uploader section
-    st.divider()
     uploaded_file = st.file_uploader(
         "Upload another resume" if resumes else "Upload your first resume",
         type=["pdf", "docx", "txt"],
