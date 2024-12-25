@@ -22,6 +22,11 @@ def init_db():
     """Initialize the database"""
     with get_connection() as conn:
         c = conn.cursor()
+        # Drop existing tables if they exist
+        c.execute('DROP TABLE IF EXISTS analysis_history')
+        c.execute('DROP TABLE IF EXISTS resumes')
+        c.execute('DROP TABLE IF EXISTS users')
+        
         # Create users table
         c.execute('''CREATE TABLE IF NOT EXISTS users
                      (id TEXT PRIMARY KEY,
@@ -29,7 +34,7 @@ def init_db():
                       password_hash TEXT,
                       created_at TIMESTAMP)''')
         
-        # Create resumes table
+        # Create resumes table with correct schema
         c.execute('''CREATE TABLE IF NOT EXISTS resumes
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       user_id TEXT,
@@ -47,6 +52,10 @@ def init_db():
                       analysis TEXT,
                       created_at TIMESTAMP,
                       FOREIGN KEY(user_id) REFERENCES users(id))''')
+        
+        # Create indexes for better performance
+        c.execute('CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_user_id ON analysis_history(user_id)')
         
         conn.commit()
 
