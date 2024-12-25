@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 import sqlite3
 from contextlib import contextmanager
+import bcrypt
 
 @contextmanager
 def get_connection():
@@ -325,6 +326,40 @@ def render_sidebar():
     # Add version info at bottom of sidebar
     st.sidebar.markdown("---")
     st.sidebar.caption("ApplyAI v1.0.0")
+
+def hash_password(password: str) -> bytes:
+    """Hash a password for storing"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+def verify_password(password: str, hashed: bytes) -> bool:
+    """Verify a stored password against one provided by user"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed)
+
+def create_user(username: str, password: str) -> str:
+    """Create a new user and return their ID"""
+    user_id = str(uuid.uuid4())
+    password_hash = hash_password(password)
+    
+    with get_connection() as conn:
+        c = conn.cursor()
+        try:
+            c.execute('''INSERT INTO users (id, username, password_hash, created_at)
+                        VALUES (?, ?, ?, CURRENT_TIMESTAMP)''',
+                     (user_id, username, password_hash))
+            conn.commit()
+            return user_id
+        except sqlite3.IntegrityError:
+            return None
+
+def authenticate_user(username: str, password: str) -> str:
+    """Authenticate a user and return their ID"""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
+        result = c.fetchone()
+        if result and verify_password(password, result[1]):
+            return result[0]
+    return None
 
 if __name__ == "__main__":
     run()
