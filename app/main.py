@@ -168,6 +168,35 @@ def render_resume_section():
                 gap: 1rem;
                 margin-top: 1rem;
             }
+            /* Delete confirmation dialog */
+            .delete-confirm {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 1rem;
+                margin: 0.5rem 0 0.5rem 3rem;
+                width: fit-content;
+            }
+            .delete-confirm p {
+                margin: 0 0 1rem 0;
+                color: #444;
+            }
+            .delete-buttons {
+                display: flex;
+                gap: 1rem;
+            }
+            .delete-buttons button {
+                padding: 0.5rem 1rem !important;
+                border-radius: 4px !important;
+            }
+            .delete-buttons button:first-child {
+                background-color: #ff4b4b !important;
+                color: white !important;
+            }
+            .delete-buttons button:last-child {
+                background-color: #f0f2f6 !important;
+                color: #444 !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -224,20 +253,24 @@ def render_resume_section():
             
             # Show delete confirmation if this is the file being deleted
             if st.session_state.delete_confirmation == name:
-                with st.container():
-                    st.markdown('<div class="delete-dialog">', unsafe_allow_html=True)
-                    st.warning(f"Are you sure you want to delete {name}?")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Confirm", key=f"confirm_del_{idx}", type="primary"):
-                            if delete_resume(st.session_state.user_id, name):
-                                st.session_state.delete_confirmation = None
-                                st.rerun()
-                    with col2:
-                        if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
+                st.markdown(
+                    f"""
+                    <div class="delete-confirm">
+                        <p>Are you sure you want to delete {name}?</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if st.button("Delete", key=f"confirm_del_{idx}", type="primary"):
+                        if delete_resume(st.session_state.user_id, name):
                             st.session_state.delete_confirmation = None
                             st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+                with col2:
+                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
+                        st.session_state.delete_confirmation = None
+                        st.rerun()
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
