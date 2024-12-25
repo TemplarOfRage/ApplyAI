@@ -167,15 +167,16 @@ def render_resume_section():
                         content,
                         uploaded_file.type
                     ):
-                        st.success(f"Successfully uploaded: {uploaded_file.name}")
+                        # Use toast instead of success message
+                        st.toast(f"✅ Successfully uploaded: {uploaded_file.name}", icon="✅")
                         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
                     else:
-                        st.error(f"Failed to save {uploaded_file.name}")
+                        st.toast(f"❌ Failed to save {uploaded_file.name}", icon="❌")
                 else:
-                    st.error(f"No content extracted from {uploaded_file.name}")
+                    st.toast(f"❌ No content extracted from {uploaded_file.name}", icon="❌")
                     
             except Exception as e:
-                st.error(f"Error processing {uploaded_file.name}: {str(e)}")
+                st.toast(f"❌ Error processing {uploaded_file.name}", icon="❌")
                 with debug_container:
                     import traceback
                     st.write("Error details:", traceback.format_exc())
@@ -252,8 +253,10 @@ def render_resume_section():
                         if save_resume(st.session_state.user_id, name, edited_content, file_type):
                             st.session_state[f'editing_{idx}'] = False
                             st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-                            st.success("Changes saved!")
+                            st.toast("✅ Changes saved successfully!", icon="✅")
                             st.rerun()
+                        else:
+                            st.toast("❌ Failed to save changes", icon="❌")
                     
                     if col2.button("Cancel", key=f"cancel_{idx}"):
                         st.session_state[f'editing_{idx}'] = False
