@@ -19,98 +19,72 @@ import tempfile
 import os
 
 def render_job_posting_section():
-    # Store job posting data in session state
-    if 'job_data' not in st.session_state:
-        st.session_state.job_data = {
-            'url': '',
-            'text': '',
-            'questions': ''
+    st.markdown("""
+        <style>
+        .analyze-button {
+            position: sticky;
+            bottom: 0;
+            padding: 1rem;
+            background: white;
+            border-top: 1px solid #eee;
         }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # Create a container for the entire section
-    with st.container():
-        # Job Posting URL input
-        job_url = st.text_input(
-            "Job Posting URL", 
-            value=st.session_state.job_data['url'],
-            placeholder="Paste a job posting URL here (optional)"
+    # Job inputs
+    job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
+    job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
+    
+    with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
+        custom_questions = st.text_area(
+            "Add any custom application questions",
+            placeholder="Enter each question on a new line...",
+            help="These questions will be analyzed along with your resume"
         )
-        st.session_state.job_data['url'] = job_url
 
-        # Job posting text area
-        job_text = st.text_area(
-            "Or paste job posting text",
-            value=st.session_state.job_data['text'],
-            placeholder="Paste the job description here to analyze it..."
-        )
-        st.session_state.job_data['text'] = job_text
-
-        # Custom questions in an expander
-        with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
-            custom_questions = st.text_area(
-                "Add any custom application questions",
-                value=st.session_state.job_data['questions'],
-                placeholder="Enter each question on a new line...",
-                help="These questions will be analyzed along with your resume"
-            )
-            st.session_state.job_data['questions'] = custom_questions
-
-        # ALWAYS create these elements
-        st.markdown("---")  # Add a separator
-        
-        # Check conditions
-        has_job = bool(job_url or job_text)
-        has_resume = bool(st.session_state.get('resumes', []))
-
-        # Create columns for button and status - ALWAYS create these
-        col1, col2 = st.columns([1, 4])
-        
-        # ALWAYS show the button, just control its disabled state
-        analyze_disabled = not (has_job and has_resume)
-        
-        if col1.button(
-            "Analyze",
-            disabled=analyze_disabled,
-            type="primary",
-            use_container_width=True,
-            key="analyze_button"  # Fixed key to maintain button state
-        ):
-            if has_job and has_resume:
-                with st.spinner("Analyzing your resume against the job posting..."):
-                    try:
-                        # Analysis logic here
-                        resume = st.session_state.resumes[0]
-                        resume_content = resume[1]
-                        
-                        job_content = job_text
-                        if job_url:
-                            job_content = f"URL: {job_url}\n\n{job_content}"
-                        
-                        if custom_questions:
-                            job_content += f"\n\nCustom Questions:\n{custom_questions}"
-                        
-                        response = analyze_resume_for_job(resume_content, job_content)
-                        
-                        if 'analysis_results' not in st.session_state:
-                            st.session_state.analysis_results = {}
-                        
-                        st.session_state.analysis_results['current'] = response
-                        st.success("Analysis complete!")
-                        
-                    except Exception as e:
-                        st.error(f"Error during analysis: {str(e)}")
-        
-        # Show helper message if button is disabled
-        if analyze_disabled:
-            if not has_resume:
-                col2.info("⚠️ Upload a resume to get started")
-            elif not has_job:
-                col2.info("⚠️ Add a job posting to analyze")
-
-    # Show analysis results if available
-    if 'analysis_results' in st.session_state and st.session_state.analysis_results.get('current'):
+    # ALWAYS create analyze section
+    st.markdown('<div class="analyze-button">', unsafe_allow_html=True)
+    
+    # Simple conditions
+    has_job = bool(job_url or job_text)
+    has_resume = bool(st.session_state.get('resumes', []))
+    
+    # Create button columns
+    col1, col2 = st.columns([1, 4])
+    
+    # THE BUTTON THAT REFUSES TO DISAPPEAR
+    if col1.button(
+        "Analyze",
+        disabled=not (has_job and has_resume),
+        type="primary",
+        use_container_width=True,
+        key="the_button_that_stays"
+    ):
+        if has_job and has_resume:
+            with st.spinner("Analyzing..."):
+                try:
+                    resume = st.session_state.resumes[0]
+                    response = analyze_resume_for_job(
+                        resume[1],
+                        f"{job_url}\n\n{job_text}\n\n{custom_questions}"
+                    )
+                    st.session_state['analysis_results'] = response
+                    st.success("Analysis complete!")
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+    
+    # Status message
+    if not has_resume:
+        col2.info("⚠️ Upload a resume to get started")
+    elif not has_job:
+        col2.info("⚠️ Add a job posting to analyze")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Show results if available
+    if 'analysis_results' in st.session_state:
         st.markdown("### Analysis Results")
-        st.markdown(st.session_state.analysis_results['current'])
+        st.markdown(st.session_state.analysis_results)
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
