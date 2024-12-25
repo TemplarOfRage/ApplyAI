@@ -1,89 +1,41 @@
 import streamlit as st
-from datetime import datetime
 import PyPDF2
-import docx
-import io
+import docx2txt
+from .auth import get_connection
 
-# In-memory storage for resumes (replace with database in production)
-@st.cache_data(show_spinner=False)
-def get_resume_store():
-    """Cache the resume store to persist across reruns"""
-    return {}
-
-def extract_text_from_file(uploaded_file):
-    """Extract text content from various file types"""
+def extract_text_from_pdf(pdf_file) -> str:
+    """Extract text from a PDF file"""
     try:
-        # Get the file extension
-        file_type = uploaded_file.type
-        
-        if 'pdf' in file_type.lower():
-            # Handle PDF files
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-            return text
-            
-        elif 'word' in file_type.lower() or 'docx' in file_type.lower():
-            # Handle Word documents
-            doc = docx.Document(io.BytesIO(uploaded_file.read()))
-            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            return text
-            
-        elif 'text' in file_type.lower():
-            # Handle plain text files
-            return uploaded_file.getvalue().decode('utf-8')
-            
-        else:
-            return None
-            
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        return " ".join(page.extract_text() for page in pdf_reader.pages)
     except Exception as e:
-        st.error(f"Error extracting text: {str(e)}")
+        st.error(f"Error reading PDF: {str(e)}")
         return None
 
-def save_resume(user_id, name, content, file_type):
-    """Save a resume to storage"""
-    resumes = get_resume_store()
-    
-    # Initialize user's resume storage if it doesn't exist
-    if user_id not in resumes:
-        resumes[user_id] = {}
-    
-    # Save the resume with metadata
-    resumes[user_id][name] = {
-        'content': content,
-        'file_type': file_type,
-        'uploaded_at': datetime.utcnow().isoformat()
-    }
-    
-    # Force cache update
-    get_resume_store.clear()
-    return True
+def extract_text_from_docx(docx_file) -> str:
+    """Extract text from a DOCX file"""
+    try:
+        return docx2txt.process(docx_file)
+    except Exception as e:
+        st.error(f"Error reading DOCX: {str(e)}")
+        return None
 
-def get_user_resumes(user_id):
-    """Get all resumes for a user"""
-    resumes = get_resume_store()
-    
-    if user_id not in resumes:
-        return []
-    
-    # Return list of tuples (name, content, file_type)
-    return [(name, data['content'], data['file_type']) 
-            for name, data in resumes[user_id].items()]
+def extract_text_from_file(uploaded_file) -> str:
+    """Extract text from an uploaded file"""
+    if uploaded_file.type == "application/pdf":
+        return extract_text_from_pdf(uploaded_file)
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return extract_text_from_docx(uploaded_file)
+    else:
+        return uploaded_file.getvalue().decode()
 
-def delete_resume(user_id, name):
-    """Delete a resume from storage"""
-    resumes = get_resume_store()
-    
-    if user_id in resumes and name in resumes[user_id]:
-        del resumes[user_id][name]
-        
-        # Clean up empty user entries
-        if not resumes[user_id]:
-            del resumes[user_id]
-        
-        # Force cache update
-        get_resume_store.clear()
-        return True
-        
-    return False 
+def save_resume(user_id: str, name: str, content: str, file_type: str) -> bool:
+    """Save a resume to the database"""
+    with get_connection() as conn:
+        c = conn.cursor()
+        try:
+            c.execute('''INSERT INTO resumes 
+                        (user_id, name, content, file_type, created_at)
+                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                     
+</rewritten_file> 
