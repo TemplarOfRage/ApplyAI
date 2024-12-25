@@ -60,28 +60,51 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Simple file uploader with consistent size limit
         uploaded_file = st.file_uploader(
-            "Drag and drop your resume here or click to browse",
+            "Upload Resume",
             type=["pdf", "docx", "txt"],
-            help="Supported formats: PDF, DOCX, TXT • Max size: 5MB",
             key="resume_uploader"
         )
         
+        # Debug prints
+        print("\n=== File Upload Status ===")
+        print(f"File uploaded: {uploaded_file is not None}")
+        if uploaded_file:
+            print(f"File name: {uploaded_file.name}")
+            print(f"File type: {uploaded_file.type}")
+            print(f"File size: {uploaded_file.size}")
+        
         if uploaded_file:
             try:
+                # Process the file
                 if uploaded_file.size <= 5 * 1024 * 1024:  # 5MB limit
                     content = extract_text_from_file(uploaded_file)
-                    if content and save_resume(st.session_state.user_id, uploaded_file.name, content, uploaded_file.type):
-                        # Clear the uploader state and force refresh
-                        st.session_state.pop('resume_uploader', None)
-                        st.rerun()
+                    print(f"Extracted content length: {len(content) if content else 'None'}")
+                    
+                    if content:
+                        # Try to save and handle the result
+                        save_success = save_resume(
+                            user_id=st.session_state.user_id,
+                            filename=uploaded_file.name,
+                            content=content,
+                            file_type=uploaded_file.type
+                        )
+                        
+                        print(f"Save attempt result: {save_success}")
+                        
+                        if save_success:
+                            # Clear the uploader
+                            st.session_state.resume_uploader = None
+                            print("Triggering rerun after successful save")
+                            st.rerun()
+                        else:
+                            print("Failed to save resume")
                     else:
-                        print("Failed to save resume to database")  # Debug log
+                        print("Failed to extract content from file")
                 else:
                     st.error("File size too large. Please upload a file smaller than 5MB.")
             except Exception as e:
-                print(f"Error processing file: {str(e)}")  # Debug log
+                print(f"Error in file processing: {str(e)}")
         
         st.divider()
         render_saved_resumes()
@@ -89,7 +112,13 @@ def render_resume_section(col2):
 def render_saved_resumes():
     """Render saved resumes section"""
     st.subheader("Saved Resumes")
+    
+    # Debug print
+    print("\n=== Checking Saved Resumes ===")
+    print(f"User ID: {st.session_state.get('user_id', 'Not set')}")
+    
     resumes = get_user_resumes(st.session_state.user_id)
+    print(f"Found {len(resumes)} saved resumes")
     
     if not resumes:
         st.info("No resumes uploaded yet")
@@ -98,16 +127,7 @@ def render_saved_resumes():
             col1, col2, col3 = st.columns([3, 1, 1])
             
             with col1:
-                # Custom HTML/CSS for hover effect and popover
-                st.markdown(f"""
-                    <div class="resume-file" 
-                         onmouseover="this.style.backgroundColor='#f0f2f6'" 
-                         onmouseout="this.style.backgroundColor='transparent'"
-                         style="padding: 8px; border-radius: 4px; cursor: pointer;">
-                        📄 {name}
-                        <span class="file-info">({file_type})</span>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"📄 {name}")
             
             with col2:
                 if st.button("Show Content", key=f"show_{name}"):
@@ -118,7 +138,6 @@ def render_saved_resumes():
                     if delete_resume(st.session_state.user_id, name):
                         st.rerun()
             
-            # Show content if button was clicked
             if st.session_state.get(f"show_content_{name}", False):
                 with st.expander("Extracted Content", expanded=True):
                     st.text_area("", value=content, height=200, disabled=True)
