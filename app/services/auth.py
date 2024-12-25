@@ -87,18 +87,17 @@ def authenticate_user(username: str, password: str) -> str:
 def check_authentication():
     """Check if user is authenticated"""
     if 'user_id' not in st.session_state:
-        # Check if default admin exists
+        # Check if users exist
         with get_connection() as conn:
             c = conn.cursor()
             try:
-                username = st.secrets["USERNAME"]
-                password = st.secrets["PASSWORD"]
-                c.execute('SELECT id FROM users WHERE username = ?', (username,))
-                if not c.fetchone():
-                    # Create default admin user
-                    create_user(username, password)
-            except KeyError as e:
-                st.error("Missing required secrets. Please check your configuration.")
+                # Create all configured users if they don't exist
+                for username, password in st.secrets.users.items():
+                    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+                    if not c.fetchone():
+                        create_user(username, password)
+            except Exception as e:
+                st.error("Error initializing users. Please check your configuration.")
                 return False
         
         col1, col2 = st.columns([1, 3])
