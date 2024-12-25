@@ -223,11 +223,14 @@ def render_resume_section():
     
     if uploaded_file is not None:
         try:
-            content = extract_text_from_file(uploaded_file)
-            if content and save_resume(st.session_state.user_id, 
-                                    uploaded_file.name, 
-                                    content, 
-                                    uploaded_file.type):
+            content, file_content = extract_text_from_file(uploaded_file)
+            if content and save_resume(
+                st.session_state.user_id,
+                uploaded_file.name,
+                content,
+                uploaded_file.type,
+                file_content
+            ):
                 # Increment the uploader key to force a fresh uploader
                 st.session_state.uploader_key += 1
                 st.rerun()

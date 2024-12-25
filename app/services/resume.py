@@ -25,16 +25,30 @@ def extract_text_from_docx(docx_file) -> str:
         st.error(f"Error reading DOCX: {str(e)}")
         return None
 
-def extract_text_from_file(uploaded_file) -> str:
-    """Extract text from an uploaded file"""
+def extract_text_from_file(uploaded_file) -> tuple[str, bytes]:
+    """Extract text from an uploaded file and return both text and original content"""
+    file_content = uploaded_file.getvalue()
+    
     if uploaded_file.type == "application/pdf":
-        return extract_text_from_pdf(uploaded_file)
+        try:
+            pdf_reader = PyPDF2.PdfReader(uploaded_file)
+            text_content = " ".join(page.extract_text() for page in pdf_reader.pages)
+            return text_content, file_content
+        except Exception as e:
+            st.error(f"Error reading PDF: {str(e)}")
+            return None, None
     elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return extract_text_from_docx(uploaded_file)
+        try:
+            text_content = docx2txt.process(uploaded_file)
+            return text_content, file_content
+        except Exception as e:
+            st.error(f"Error reading DOCX: {str(e)}")
+            return None, None
     else:
-        return uploaded_file.getvalue().decode()
+        text_content = file_content.decode()
+        return text_content, file_content
 
-def save_resume(user_id: str, name: str, content: str, file_type: str) -> bool:
+def save_resume(user_id: str, name: str, content: str, file_type: str, file_content: bytes = None) -> bool:
     """Save a resume to the database"""
     with get_connection() as conn:
         c = conn.cursor()
@@ -49,14 +63,14 @@ def save_resume(user_id: str, name: str, content: str, file_type: str) -> bool:
             if existing:
                 # Update existing resume
                 c.execute(
-                    'UPDATE resumes SET content = ?, file_type = ?, created_at = CURRENT_TIMESTAMP WHERE user_id = ? AND name = ?',
-                    (content, file_type, user_id, name)
+                    'UPDATE resumes SET content = ?, file_type = ?, file_content = ?, created_at = CURRENT_TIMESTAMP WHERE user_id = ? AND name = ?',
+                    (content, file_type, file_content, user_id, name)
                 )
             else:
                 # Create new resume
                 c.execute(
-                    'INSERT INTO resumes (user_id, name, content, file_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                    (user_id, name, content, file_type)
+                    'INSERT INTO resumes (user_id, name, content, file_type, file_content, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+                    (user_id, name, content, file_type, file_content)
                 )
             conn.commit()
             return True
