@@ -180,10 +180,22 @@ def render_resume_section():
                     import traceback
                     st.write("Error details:", traceback.format_exc())
     
-    # Display uploaded resumes
+    # Display uploaded resumes in a table
     if st.session_state.resumes:
         st.markdown("### Your Resumes")
         
+        # Create the table header
+        col1, col2, col3, col4, col5 = st.columns([3, 1.5, 1, 1, 1])
+        col1.markdown("**Filename**")
+        col2.markdown("**Last Updated**")
+        col3.markdown("**View**")
+        col4.markdown("**Edit**")
+        col5.markdown("**Delete**")
+        
+        # Add a separator
+        st.markdown("---")
+        
+        # Display each resume
         for idx, resume_data in enumerate(st.session_state.resumes):
             # Safely unpack resume data with defaults
             name = resume_data[0] if len(resume_data) > 0 else "Untitled"
@@ -192,36 +204,42 @@ def render_resume_section():
             created_at = resume_data[3] if len(resume_data) > 3 else None
             updated_at = resume_data[4] if len(resume_data) > 4 else None
             
-            with st.expander(f"📄 {name}", expanded=False):
-                cols = st.columns([3, 1, 1, 1])
-                
-                # File info
-                with cols[0]:
-                    if updated_at:
-                        st.markdown(f"**Last updated:** {updated_at}")
-                    elif created_at:
-                        st.markdown(f"**Created:** {created_at}")
-                
-                # Edit button
-                if cols[1].button("✏️ Edit", key=f"edit_{idx}"):
-                    st.session_state[f'editing_{idx}'] = True
-                
-                # Download button
-                cols[2].download_button(
-                    "⬇️ Download",
-                    content,
-                    file_name=name,
-                    mime=file_type
-                )
-                
-                # Delete button
-                if cols[3].button("🗑️ Delete", key=f"del_{idx}"):
-                    if delete_resume(st.session_state.user_id, name):
-                        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+            cols = st.columns([3, 1.5, 1, 1, 1])
+            
+            # Filename
+            cols[0].markdown(f"📄 {name}")
+            
+            # Last Updated
+            update_time = updated_at or created_at or "Unknown"
+            if isinstance(update_time, str):
+                cols[1].markdown(update_time)
+            else:
+                cols[1].markdown(update_time.strftime("%Y-%m-%d %H:%M"))
+            
+            # View button
+            if cols[2].button("👁️", key=f"view_{idx}"):
+                st.session_state[f'viewing_{idx}'] = True
+            
+            # Edit button
+            if cols[3].button("✏️", key=f"edit_{idx}"):
+                st.session_state[f'editing_{idx}'] = True
+            
+            # Delete button
+            if cols[4].button("🗑️", key=f"del_{idx}"):
+                if delete_resume(st.session_state.user_id, name):
+                    st.session_state.resumes = get_user_resumes(st.session_state.user_id)
+                    st.rerun()
+            
+            # Show content viewer/editor if active
+            if st.session_state.get(f'viewing_{idx}', False):
+                with st.expander("Resume Content", expanded=True):
+                    st.text(content)
+                    if st.button("Close", key=f"close_view_{idx}"):
+                        st.session_state[f'viewing_{idx}'] = False
                         st.rerun()
-                
-                # Show content
-                if st.session_state.get(f'editing_{idx}', False):
+            
+            if st.session_state.get(f'editing_{idx}', False):
+                with st.expander("Edit Resume", expanded=True):
                     edited_content = st.text_area(
                         "Edit Resume Content",
                         value=content,
@@ -240,9 +258,9 @@ def render_resume_section():
                     if col2.button("Cancel", key=f"cancel_{idx}"):
                         st.session_state[f'editing_{idx}'] = False
                         st.rerun()
-                else:
-                    with st.expander("View Content", expanded=False):
-                        st.text(content)
+            
+            # Add a separator between rows
+            st.markdown("---")
 
 def run():
     """Main entry point for the application"""
