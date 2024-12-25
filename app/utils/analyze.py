@@ -1,4 +1,5 @@
 from anthropic import Anthropic
+from .errors import AnalysisError
 
 def analyze_resume_for_job(resume_content, job_content):
     """Basic analysis function"""
@@ -34,4 +35,4 @@ def analyze_resume_for_job(resume_content, job_content):
         )
         return response.content[0].text
     except Exception as e:
-        raise Exception(f"Error calling Claude API: {str(e)}") 
+        raise AnalysisError(f"Error calling Claude API: {str(e)}") 

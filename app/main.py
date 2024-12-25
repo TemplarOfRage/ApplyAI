@@ -18,6 +18,7 @@ import base64
 import tempfile
 import os
 from utils.analyze import analyze_resume_for_job
+from utils.errors import AnalysisError
 
 def render_analyze_button(job_url, job_text, custom_questions):
     """Separate function just for the analyze button"""
@@ -97,8 +98,10 @@ def render_job_posting_section():
                     # Store and display results
                     st.session_state['analysis_results'] = response
                     st.success("Analysis complete!")
+                except AnalysisError as e:
+                    st.error(str(e))
                 except Exception as e:
-                    st.error(f"Error during analysis: {str(e)}")
+                    st.error(f"Unexpected error: {str(e)}")
     
     # Helper message
     if not has_resume:
