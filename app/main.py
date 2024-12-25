@@ -142,7 +142,9 @@ def render_resume_section():
         </style>
     """, unsafe_allow_html=True)
     
-    # Initialize session state for edit panels if not exists
+    # Initialize session state for view and edit panels if not exists
+    if 'view_states' not in st.session_state:
+        st.session_state.view_states = {}
     if 'edit_states' not in st.session_state:
         st.session_state.edit_states = {}
     
@@ -175,23 +177,25 @@ def render_resume_section():
                 st.markdown(f'<div class="file-name"><span class="file-icon">📄</span>{display_name}</div>', unsafe_allow_html=True)
             
             # View button
-            view_key = f"view_{idx}_{hash(name)}"
-            if cols[1].button("👁️", key=view_key, help="View original file"):
+            view_btn_key = f"view_btn_{idx}_{hash(name)}"
+            view_state_key = f"view_state_{idx}_{hash(name)}"
+            if cols[1].button("👁️", key=view_btn_key, help="View original file"):
                 # Toggle view state
-                st.session_state[view_key] = not st.session_state.get(view_key, False)
+                st.session_state.view_states[view_state_key] = not st.session_state.view_states.get(view_state_key, False)
                 # Close edit panel if open
-                edit_key = f"edit_{idx}_{hash(name)}"
-                if edit_key in st.session_state.edit_states:
-                    del st.session_state.edit_states[edit_key]
+                edit_state_key = f"edit_state_{idx}_{hash(name)}"
+                if edit_state_key in st.session_state.edit_states:
+                    del st.session_state.edit_states[edit_state_key]
             
             # Edit button
-            edit_key = f"edit_{idx}_{hash(name)}"
-            if cols[2].button("✏️", key=edit_key, help="Edit extracted text"):
+            edit_btn_key = f"edit_btn_{idx}_{hash(name)}"
+            edit_state_key = f"edit_state_{idx}_{hash(name)}"
+            if cols[2].button("✏️", key=edit_btn_key, help="Edit extracted text"):
                 # Toggle edit state
-                st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
+                st.session_state.edit_states[edit_state_key] = not st.session_state.edit_states.get(edit_state_key, False)
                 # Close view panel if open
-                if view_key in st.session_state:
-                    del st.session_state[view_key]
+                if view_state_key in st.session_state.view_states:
+                    del st.session_state.view_states[view_state_key]
             
             # Delete button
             del_key = f"del_{idx}_{hash(name)}"
@@ -199,8 +203,27 @@ def render_resume_section():
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
+            # Show file preview if requested
+            if st.session_state.view_states.get(view_state_key, False):
+                with st.expander("", expanded=True):
+                    file_content = get_resume_file(st.session_state.user_id, name)
+                    if file_content and file_type == "application/pdf":
+                        import base64
+                        base64_pdf = base64.b64encode(file_content).decode('utf-8')
+                        pdf_display = f'''
+                            <iframe
+                                src="data:application/pdf;base64,{base64_pdf}"
+                                width="100%"
+                                height="600"
+                                style="border: none;"
+                            ></iframe>
+                        '''
+                        st.markdown(pdf_display, unsafe_allow_html=True)
+                    else:
+                        st.info("Preview not available for this file type")
+            
             # Show edit panel only if explicitly opened
-            if st.session_state.edit_states.get(edit_key, False):
+            if st.session_state.edit_states.get(edit_state_key, False):
                 st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
                 st.write("Edit extracted text:")
                 edited_content = st.text_area(
@@ -218,12 +241,12 @@ def render_resume_section():
                     if st.button("Save Changes", key=f"save_{idx}_{hash(name)}", 
                                type="primary", use_container_width=True):
                         update_resume_content(st.session_state.user_id, name, edited_content)
-                        del st.session_state.edit_states[edit_key]
+                        del st.session_state.edit_states[edit_state_key]
                         st.rerun()
                 with col2:
                     if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
                                type="secondary", use_container_width=True):
-                        del st.session_state.edit_states[edit_key]
+                        del st.session_state.edit_states[edit_state_key]
                         st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
