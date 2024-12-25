@@ -46,18 +46,24 @@ def render_analyze_button(job_url, job_text, custom_questions):
             try:
                 job_content = f"{job_url}\n\n{job_text}\n\n{custom_questions}"
                 
-                # Pass all resumes instead of just the first one
-                response = analyze_resume_for_job(st.session_state.resumes, job_content)
+                # Ensure resumes is a list of tuples
+                resumes = st.session_state.resumes
+                if not isinstance(resumes, list):
+                    resumes = [resumes]
+                
+                # Get analysis
+                response = analyze_resume_for_job(resumes, job_content)
                 st.session_state.analysis_results = response
                 
-                # Store analysis for each resume
-                for resume in st.session_state.resumes:
-                    render_analysis_results(
-                        response,
-                        st.session_state.user_id,
-                        resume[0],  # resume name
-                        job_content
-                    )
+                # Store analysis for each valid resume
+                for resume in resumes:
+                    if isinstance(resume, (tuple, list)) and len(resume) >= 2:
+                        render_analysis_results(
+                            response,
+                            st.session_state.user_id,
+                            resume[0],  # resume name
+                            job_content
+                        )
                 
                 st.success("Analysis complete!")
             except Exception as e:

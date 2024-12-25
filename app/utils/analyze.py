@@ -7,11 +7,19 @@ def analyze_resume_for_job(resumes, job_content):
     try:
         client = Anthropic(api_key=st.secrets['ANTHROPIC_API_KEY'])
         
-        # Format all resumes for context
-        resume_context = "\n\n".join([
-            f"Resume {idx + 1} - {name}:\n{content}" 
-            for idx, (name, content, _) in enumerate(resumes)
-        ])
+        # Safely handle resume data
+        resume_context = ""
+        for idx, resume_data in enumerate(resumes):
+            # Check if resume_data is a tuple with at least 2 elements
+            if isinstance(resume_data, (tuple, list)) and len(resume_data) >= 2:
+                name = resume_data[0]
+                content = resume_data[1]
+                resume_context += f"\nResume {idx + 1} - {name}:\n{content}\n"
+            else:
+                st.warning(f"Skipping malformed resume data at index {idx}")
+        
+        if not resume_context:
+            raise AnalysisError("No valid resume data found")
         
         prompt = f"""
         As an AI career advisor, analyze these resumes against the job posting and provide detailed feedback.
