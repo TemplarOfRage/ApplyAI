@@ -141,16 +141,30 @@ def render_resume_section():
         key='resume_uploader'
     )
     
-    # Debug expander
+    # Debug expander with custom CSS for small text
     with st.expander("🔍 Debug Information", expanded=False):
+        st.markdown("""
+            <style>
+                /* Debug container styles */
+                .debug-text {
+                    font-size: 0.7em;
+                    color: #666;
+                    font-family: monospace;
+                    margin: 0;
+                    padding: 0;
+                    line-height: 1.2;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
         debug_container = st.container()
     
     if uploaded_files:
         for uploaded_file in uploaded_files:
             try:
                 with debug_container:
-                    st.write(f"Processing: {uploaded_file.name}")
-                    st.write(f"File type: {uploaded_file.type}")
+                    st.markdown(f"<p class='debug-text'>Processing: {uploaded_file.name}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p class='debug-text'>File type: {uploaded_file.type}</p>", unsafe_allow_html=True)
                 
                 content = extract_text_from_file(uploaded_file)
                 
@@ -159,7 +173,7 @@ def render_resume_section():
                         content = content[1] if len(content) > 1 else str(content)
                     
                     with debug_container:
-                        st.write(f"Content length: {len(content)}")
+                        st.markdown(f"<p class='debug-text'>Content length: {len(content)}</p>", unsafe_allow_html=True)
                     
                     if save_resume(
                         st.session_state.user_id,
@@ -167,7 +181,6 @@ def render_resume_section():
                         content,
                         uploaded_file.type
                     ):
-                        # Use toast instead of success message
                         st.toast(f"✅ Successfully uploaded: {uploaded_file.name}", icon="✅")
                         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
                     else:
@@ -179,7 +192,7 @@ def render_resume_section():
                 st.toast(f"❌ Error processing {uploaded_file.name}", icon="❌")
                 with debug_container:
                     import traceback
-                    st.write("Error details:", traceback.format_exc())
+                    st.markdown(f"<p class='debug-text'>Error details: {traceback.format_exc()}</p>", unsafe_allow_html=True)
     
     # Display uploaded resumes in a table
     if st.session_state.resumes:
