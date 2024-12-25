@@ -1,56 +1,61 @@
 import streamlit as st
 import re
+from utils.db import save_analysis
 
 def parse_analysis_sections(analysis_text):
     """Parse the analysis text into structured sections"""
     sections = {
-        'match_score': '',
-        'overall': '',
-        'qualifications': '',
-        'missing': '',
-        'improvements': ''
+        'match_score': 0,
+        'overall': [],
+        'qualifications': [],
+        'missing': [],
+        'improvements': []
     }
     
-    # Extract match score (assuming it's a percentage)
-    match = re.search(r'Match Score:?\s*(\d+)%', analysis_text)
-    if match:
-        sections['match_score'] = int(match.group(1))
-    else:
-        sections['match_score'] = 0  # Default to 0 if no match found
-    
-    # Extract other sections based on headers
     current_section = None
-    current_text = []
     
     for line in analysis_text.split('\n'):
-        if '1. Match Score' in line:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Check for section headers
+        if 'Match Score' in line:
             current_section = 'match_score'
-        elif '2. Key Qualifications' in line:
-            current_section = 'qualifications'
-        elif '3. Missing Skills' in line:
-            current_section = 'missing'
-        elif '4. Suggested Resume' in line:
-            current_section = 'improvements'
-        elif '5. Overall' in line:
+            # Extract score
+            match = re.search(r'(\d+)%', line)
+            if match:
+                sections['match_score'] = int(match.group(1))
+        elif 'Overall Recommendations' in line:
             current_section = 'overall'
-        elif current_section and line.strip():
-            current_text.append(line.strip())
-        
-        if current_section:
-            sections[current_section] = '\n'.join(current_text)
-            current_text = []
+        elif 'Key Qualifications Match' in line:
+            current_section = 'qualifications'
+        elif 'Missing Skills/Experience' in line:
+            current_section = 'missing'
+        elif 'Suggested Resume Improvements' in line:
+            current_section = 'improvements'
+        # Add content to current section
+        elif current_section and current_section != 'match_score':
+            # Clean up bullet points
+            line = line.lstrip('•-').strip()
+            if line:
+                sections[current_section].append(line)
     
     return sections
 
-def render_analysis_results(analysis_text):
+def render_analysis_results(analysis_text, user_id=None, resume_name=None, job_content=None):
     """Renders the analysis results in a structured format"""
     if not analysis_text:
         return
         
-    st.markdown("### Analysis Results")
-    
     # Parse the analysis into sections
     sections = parse_analysis_sections(analysis_text)
+    
+    # Save to database if we have user info
+    if user_id and resume_name and job_content:
+        save_analysis(user_id, resume_name, job_content, analysis_text)
+    
+    st.markdown("### Analysis Results")
     
     # Create tabs in new order
     match_tab, overall_tab, quals_tab, missing_tab, improve_tab = st.tabs([
@@ -63,7 +68,7 @@ def render_analysis_results(analysis_text):
     
     with match_tab:
         st.markdown("#### Match Score")
-        score = sections.get('match_score', 0)  # This is now guaranteed to be an int
+        score = sections['match_score']
         
         # Create a progress bar for the match score
         st.progress(float(score)/100)
@@ -79,49 +84,23 @@ def render_analysis_results(analysis_text):
     
     with overall_tab:
         st.markdown("#### Overall Assessment")
-        if sections.get('overall'):
-            # Split into bullet points if possible
-            points = sections['overall'].split('\n')
-            for point in points:
-                if point.strip():
-                    st.markdown(f"• {point.strip()}")
+        for point in sections['overall']:
+            st.markdown(f"• {point}")
         
     with quals_tab:
         st.markdown("#### Key Qualifications Match")
-        if sections.get('qualifications'):
-            quals = sections['qualifications'].split('\n')
-            for qual in quals:
-                if qual.strip():
-                    if qual.startswith(('-', '•')):
-                        st.markdown(qual)
-                    else:
-                        st.markdown(f"• {qual.strip()}")
+        for qual in sections['qualifications']:
+            st.success(f"• {qual}")
     
     with missing_tab:
         st.markdown("#### Missing Skills/Experience")
-        if sections.get('missing'):
-            missing = sections['missing'].split('\n')
-            for skill in missing:
-                if skill.strip():
-                    if skill.startswith(('-', '•')):
-                        st.error(skill)
-                    else:
-                        st.error(f"• {skill.strip()}")
+        for skill in sections['missing']:
+            st.error(f"• {skill}")
     
     with improve_tab:
         st.markdown("#### Suggested Improvements")
-        if sections.get('improvements'):
-            improvements = sections['improvements'].split('\n')
-            for imp in improvements:
-                if imp.strip():
-                    if imp.startswith(('-', '•')):
-                        st.info(imp)
-                    else:
-                        st.info(f"• {imp.strip()}")
-        
-        # Add action buttons
-        if st.button("📝 Edit Resume"):
-            st.session_state['show_resume_editor'] = True
+        for imp in sections['improvements']:
+            st.info(f"• {imp}")
         
         st.markdown("""
             <div style='margin-top: 1em'>
