@@ -143,14 +143,14 @@ def render_resume_section():
     st.markdown("Upload your resume to extract and edit its content.")
     
     uploaded_file = st.file_uploader(
-        "",  # Remove label since we have the header above
+        "Upload PDF file",  # Added label for accessibility
         type=['pdf'],
         key='pdf_uploader',
         help="Currently supporting PDF files only"
     )
     
     if uploaded_file:
-        with st.status(f"Processing {uploaded_file.name}...", expanded=True) as status:
+        with st.status(f"Processing {uploaded_file.name}...") as status:
             text = extract_text_from_pdf(uploaded_file)
             if text:
                 status.update(label="✅ Text extracted successfully!", state="complete")
@@ -159,13 +159,10 @@ def render_resume_section():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Preview in modal
-                    if st.button("📄 Preview Content"):
-                        st.info("Preview of extracted text:")
+                    if st.button("📄 View Content"):
                         st.code(text[:500] + "..." if len(text) > 500 else text)
                 
                 with col2:
-                    # Save button with better feedback
                     if st.button("💾 Save to Database"):
                         with st.spinner("Saving..."):
                             if save_resume(
@@ -179,9 +176,9 @@ def render_resume_section():
                                 st.error("Failed to save resume")
                 
                 # Edit option
-                if st.checkbox("✏️ Edit content before saving"):
+                if st.checkbox("✏️ Edit content"):
                     edited_text = st.text_area(
-                        "Edit extracted text",
+                        "Edit text",
                         value=text,
                         height=400
                     )

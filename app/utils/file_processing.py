@@ -19,10 +19,6 @@ def extract_text_from_pdf(uploaded_file):
             st.error("No text could be extracted from the PDF")
             return None
             
-        # Preview the extracted text
-        with st.expander("Preview Extracted Text"):
-            st.text(text[:500] + "..." if len(text) > 500 else text)
-            
         return text
         
     except Exception as e:
