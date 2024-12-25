@@ -14,6 +14,9 @@ from services.resume import (
 from services.analysis import save_analysis, get_user_analysis_history
 from config import init_streamlit_config
 import anthropic
+import base64
+import tempfile
+import os
 
 def render_job_analysis_section():
     """Render job analysis section"""
@@ -208,17 +211,21 @@ def render_resume_section():
                 with st.expander("", expanded=True):
                     file_content = get_resume_file(st.session_state.user_id, name)
                     if file_content and file_type == "application/pdf":
-                        import base64
-                        base64_pdf = base64.b64encode(file_content).decode('utf-8')
-                        pdf_display = f'''
-                            <iframe
-                                src="data:application/pdf;base64,{base64_pdf}"
-                                width="100%"
-                                height="600"
-                                style="border: none;"
-                            ></iframe>
-                        '''
-                        st.markdown(pdf_display, unsafe_allow_html=True)
+                        # Create a temporary file to display the PDF
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                            tmp_file.write(file_content)
+                            tmp_file.flush()
+                            
+                            # Display PDF using st.components.iframe
+                            st.components.iframe(
+                                f"data:application/pdf;base64,{base64.b64encode(file_content).decode('utf-8')}",
+                                height=600,
+                                scrolling=True
+                            )
+                            
+                            # Cleanup temp file
+                            tmp_file.close()
+                            os.unlink(tmp_file.name)
                     else:
                         st.info("Preview not available for this file type")
             
