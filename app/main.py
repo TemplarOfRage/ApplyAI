@@ -57,25 +57,24 @@ def render_job_posting_section():
     # Get current resumes
     resumes = get_user_resumes(st.session_state.user_id)
     has_resumes = bool(resumes)
+    has_job_content = bool(job_url or job_text)
 
-    # Always show the Analyze button, but disable it if conditions aren't met
-    analyze_disabled = not (has_resumes and (job_url or job_text))
-    
-    if st.button("Analyze", disabled=analyze_disabled, type="primary"):
-        if not has_resumes:
-            st.warning("Please upload a resume first.")
-        elif not (job_url or job_text):
-            st.warning("Please provide either a job posting URL or paste the job description.")
-        else:
+    # Create columns for button and message
+    col1, col2 = st.columns([1, 4])
+
+    # Always show the button in the first column
+    analyze_disabled = not (has_resumes and has_job_content)
+    if col1.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
+        if has_resumes and has_job_content:
             # Your existing analysis logic here
-            pass
+            analyze_job_posting(job_url, job_text, custom_questions)
     
-    # Show helpful message if button is disabled
+    # Show status message in the second column
     if analyze_disabled:
         if not has_resumes:
-            st.info("Upload a resume to get started")
-        elif not (job_url or job_text):
-            st.info("Add a job posting to analyze")
+            col2.info("⚠️ Upload a resume to get started")
+        elif not has_job_content:
+            col2.info("⚠️ Add a job posting to analyze")
 
 def render_resume_section():
     """Render resume management section"""
