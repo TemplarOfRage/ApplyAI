@@ -27,83 +27,85 @@ def render_job_posting_section():
             'questions': ''
         }
 
-    # Job Posting URL input
-    job_url = st.text_input(
-        "Job Posting URL", 
-        value=st.session_state.job_data['url'],
-        placeholder="Paste a job posting URL here (optional)"
-    )
-    st.session_state.job_data['url'] = job_url
-
-    # Job posting text area
-    job_text = st.text_area(
-        "Or paste job posting text",
-        value=st.session_state.job_data['text'],
-        placeholder="Paste the job description here to analyze it..."
-    )
-    st.session_state.job_data['text'] = job_text
-
-    # Custom questions in an expander
-    with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
-        custom_questions = st.text_area(
-            "Add any custom application questions",
-            value=st.session_state.job_data['questions'],
-            placeholder="Enter each question on a new line...",
-            help="These questions will be analyzed along with your resume"
+    # Create a container for the entire section
+    with st.container():
+        # Job Posting URL input
+        job_url = st.text_input(
+            "Job Posting URL", 
+            value=st.session_state.job_data['url'],
+            placeholder="Paste a job posting URL here (optional)"
         )
-        st.session_state.job_data['questions'] = custom_questions
+        st.session_state.job_data['url'] = job_url
 
-    # Check conditions
-    has_job = bool(st.session_state.job_data['url'] or st.session_state.job_data['text'])
-    has_resume = bool(st.session_state.resumes) if 'resumes' in st.session_state else False
+        # Job posting text area
+        job_text = st.text_area(
+            "Or paste job posting text",
+            value=st.session_state.job_data['text'],
+            placeholder="Paste the job description here to analyze it..."
+        )
+        st.session_state.job_data['text'] = job_text
 
-    # Create columns for button and status
-    col1, col2 = st.columns([1, 4])
+        # Custom questions in an expander
+        with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
+            custom_questions = st.text_area(
+                "Add any custom application questions",
+                value=st.session_state.job_data['questions'],
+                placeholder="Enter each question on a new line...",
+                help="These questions will be analyzed along with your resume"
+            )
+            st.session_state.job_data['questions'] = custom_questions
 
-    # Show analyze button
-    analyze_disabled = not (has_job and has_resume)
-    
-    if col1.button("Analyze", disabled=analyze_disabled, type="primary", use_container_width=True):
-        if has_job and has_resume:
-            with st.spinner("Analyzing your resume against the job posting..."):
-                try:
-                    # Get the first resume for now (we can add resume selection later)
-                    resume = st.session_state.resumes[0]
-                    resume_content = resume[1]  # Get the content from the tuple
-                    
-                    # Prepare job content
-                    job_content = st.session_state.job_data['text']
-                    if st.session_state.job_data['url']:
-                        # TODO: Add URL scraping functionality
-                        job_content = f"URL: {st.session_state.job_data['url']}\n\n{job_content}"
-                    
-                    # Add custom questions if present
-                    if st.session_state.job_data['questions']:
-                        job_content += f"\n\nCustom Questions:\n{st.session_state.job_data['questions']}"
-                    
-                    # Make request to Claude
-                    response = analyze_resume_for_job(
-                        resume_content,
-                        job_content
-                    )
-                    
-                    # Store analysis results in session state
-                    if 'analysis_results' not in st.session_state:
-                        st.session_state.analysis_results = {}
-                    
-                    st.session_state.analysis_results['current'] = response
-                    
-                    # Show success message
-                    st.success("Analysis complete!")
-                    
-                except Exception as e:
-                    st.error(f"Error during analysis: {str(e)}")
-    else:
+        # ALWAYS create these elements
+        st.markdown("---")  # Add a separator
+        
+        # Check conditions
+        has_job = bool(job_url or job_text)
+        has_resume = bool(st.session_state.get('resumes', []))
+
+        # Create columns for button and status - ALWAYS create these
+        col1, col2 = st.columns([1, 4])
+        
+        # ALWAYS show the button, just control its disabled state
+        analyze_disabled = not (has_job and has_resume)
+        
+        if col1.button(
+            "Analyze",
+            disabled=analyze_disabled,
+            type="primary",
+            use_container_width=True,
+            key="analyze_button"  # Fixed key to maintain button state
+        ):
+            if has_job and has_resume:
+                with st.spinner("Analyzing your resume against the job posting..."):
+                    try:
+                        # Analysis logic here
+                        resume = st.session_state.resumes[0]
+                        resume_content = resume[1]
+                        
+                        job_content = job_text
+                        if job_url:
+                            job_content = f"URL: {job_url}\n\n{job_content}"
+                        
+                        if custom_questions:
+                            job_content += f"\n\nCustom Questions:\n{custom_questions}"
+                        
+                        response = analyze_resume_for_job(resume_content, job_content)
+                        
+                        if 'analysis_results' not in st.session_state:
+                            st.session_state.analysis_results = {}
+                        
+                        st.session_state.analysis_results['current'] = response
+                        st.success("Analysis complete!")
+                        
+                    except Exception as e:
+                        st.error(f"Error during analysis: {str(e)}")
+        
         # Show helper message if button is disabled
-        if not has_resume:
-            col2.info("⚠️ Upload a resume to get started")
-        elif not has_job:
-            col2.info("⚠️ Add a job posting to analyze")
+        if analyze_disabled:
+            if not has_resume:
+                col2.info("⚠️ Upload a resume to get started")
+            elif not has_job:
+                col2.info("⚠️ Add a job posting to analyze")
 
     # Show analysis results if available
     if 'analysis_results' in st.session_state and st.session_state.analysis_results.get('current'):
