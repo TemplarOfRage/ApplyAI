@@ -14,32 +14,45 @@ def parse_analysis_sections(analysis_text):
     
     current_section = None
     
+    # Debug
+    st.write("DEBUG - Starting parse of:", analysis_text)
+    
     for line in analysis_text.split('\n'):
         line = line.strip()
         if not line:
             continue
             
+        # Debug
+        st.write(f"DEBUG - Processing line: {line}")
+        
         # Check for section headers
-        if 'Match Score' in line:
+        if 'Match Score:' in line:
             current_section = 'match_score'
-            # Extract score
             match = re.search(r'(\d+)%', line)
             if match:
                 sections['match_score'] = int(match.group(1))
-        elif 'Overall Recommendations' in line:
+                st.write(f"DEBUG - Found match score: {sections['match_score']}")
+        elif 'Overall Assessment:' in line:
             current_section = 'overall'
-        elif 'Key Qualifications Match' in line:
+            st.write("DEBUG - Switched to overall section")
+        elif 'Key Qualifications Match:' in line:
             current_section = 'qualifications'
-        elif 'Missing Skills/Experience' in line:
+            st.write("DEBUG - Switched to qualifications section")
+        elif 'Missing Skills/Experience:' in line:
             current_section = 'missing'
-        elif 'Suggested Resume Improvements' in line:
+            st.write("DEBUG - Switched to missing section")
+        elif 'Suggested Resume Improvements:' in line:
             current_section = 'improvements'
-        # Add content to current section
-        elif current_section and current_section != 'match_score':
-            # Clean up bullet points
-            line = line.lstrip('•-').strip()
+            st.write("DEBUG - Switched to improvements section")
+        # Add content to current section if it starts with a bullet point
+        elif current_section and current_section != 'match_score' and line.startswith('•'):
+            line = line.lstrip('•').strip()
             if line:
                 sections[current_section].append(line)
+                st.write(f"DEBUG - Added to {current_section}: {line}")
+    
+    # Debug final sections
+    st.write("DEBUG - Final sections:", sections)
     
     return sections
 
