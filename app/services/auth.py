@@ -90,10 +90,16 @@ def check_authentication():
         # Check if default admin exists
         with get_connection() as conn:
             c = conn.cursor()
-            c.execute('SELECT id FROM users WHERE username = ?', (st.secrets["USERNAME"],))
-            if not c.fetchone():
-                # Create default admin user
-                create_user(st.secrets["USERNAME"], st.secrets["PASSWORD"])
+            try:
+                username = st.secrets["USERNAME"]
+                password = st.secrets["PASSWORD"]
+                c.execute('SELECT id FROM users WHERE username = ?', (username,))
+                if not c.fetchone():
+                    # Create default admin user
+                    create_user(username, password)
+            except KeyError as e:
+                st.error("Missing required secrets. Please check your configuration.")
+                return False
         
         col1, col2 = st.columns([1, 3])
         
