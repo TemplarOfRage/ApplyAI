@@ -103,56 +103,51 @@ def render_resume_section():
                 font-size: 0.85rem;
                 width: 100%;
                 margin-top: 1rem;
+                border-collapse: collapse;
+            }
+            .resume-table th, .resume-table td {
+                padding: 0.5rem;
+                border-bottom: 1px solid #eee;
+                text-align: left;
             }
             .resume-table th {
                 color: #666;
                 font-weight: 400;
-                padding: 0.5rem;
-                border-bottom: 1px solid #eee;
             }
-            .resume-table td {
-                padding: 0.5rem;
-                border-bottom: 1px solid #eee;
-                vertical-align: middle;
-            }
-            /* Make buttons smaller */
-            .small-btn {
-                padding: 0 0.5rem !important;
-                height: 1.5rem !important;
-                line-height: 1.5rem !important;
-                font-size: 0.7rem !important;
-            }
-            /* Smaller icons */
-            .small-icon {
-                font-size: 0.8rem;
-            }
-            /* Smaller uploader text */
-            .uploadedFile {
-                font-size: 0.8rem !important;
-            }
-            .stUploadMessage {
-                font-size: 0.8rem !important;
-            }
-            .css-1q8dd3e {
-                font-size: 0.8rem !important;
-            }
-            .css-9ycgxx {
-                font-size: 0.8rem !important;
-            }
-            /* Hide expander arrow */
+            /* Hide expander chevron */
             .streamlit-expanderHeader {
-                border-radius: 0px !important;
+                display: none !important;
             }
+            /* Clean button styles */
+            .stButton button {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+                width: 2rem !important;
+                height: 2rem !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* File name styles */
+            .file-name {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .file-icon {
+                color: #666;
+                font-size: 0.9rem;
+            }
+            /* Hide default expander styling */
             .streamlit-expanderContent {
                 border: none !important;
+                padding: 0.5rem !important;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    # Get current resumes first
-    resumes = get_user_resumes(st.session_state.user_id)
-    
     # Show existing resumes in a table if any exist
+    resumes = get_user_resumes(st.session_state.user_id)
     if resumes:
         # Create table header
         st.markdown("""
@@ -160,9 +155,9 @@ def render_resume_section():
                 <thead>
                     <tr>
                         <th style="width: 70%">Name</th>
-                        <th style="width: 10%">View</th>
-                        <th style="width: 10%">Edit</th>
-                        <th style="width: 10%">Delete</th>
+                        <th style="width: 10%; text-align: center">View</th>
+                        <th style="width: 10%; text-align: center">Edit</th>
+                        <th style="width: 10%; text-align: center">Delete</th>
                     </tr>
                 </thead>
             </table>
@@ -175,52 +170,53 @@ def render_resume_section():
             display_name = name if len(name) < 40 else name[:37] + "..."
             
             with cols[0]:
-                st.markdown(f'<span class="small-icon">📄</span> {display_name}', unsafe_allow_html=True)
+                st.markdown(f'<div class="file-name"><span class="file-icon">📄</span>{display_name}</div>', unsafe_allow_html=True)
             
-            # View button (for PDF preview)
+            # View button
             view_key = f"view_{idx}_{hash(name)}"
-            if cols[1].button("👁��", key=view_key, help="View original file", use_container_width=True):
+            if cols[1].button("👁️", key=view_key, help="View original file"):
                 # Toggle the view state
                 current_state = st.session_state.get(f"show_{view_key}", False)
-                if current_state:
-                    del st.session_state[f"show_{view_key}"]
-                else:
-                    st.session_state[f"show_{view_key}"] = True
+                st.session_state[f"show_{view_key}"] = not current_state
+                # Ensure edit mode is closed when viewing
+                if f"edit_{view_key}" in st.session_state:
+                    del st.session_state[f"edit_{view_key}"]
             
-            # Edit button (for text content)
+            # Edit button
             edit_key = f"edit_{idx}_{hash(name)}"
-            if cols[2].button("✏️", key=edit_key, help="Edit extracted text", use_container_width=True):
-                st.session_state[f"edit_{view_key}"] = True
+            if cols[2].button("✏️", key=edit_key, help="Edit extracted text"):
+                # Toggle the edit state
+                current_state = st.session_state.get(f"edit_{view_key}", False)
+                st.session_state[f"edit_{view_key}"] = not current_state
+                # Ensure view mode is closed when editing
+                if f"show_{view_key}" in st.session_state:
+                    del st.session_state[f"show_{view_key}"]
             
             # Delete button
             del_key = f"del_{idx}_{hash(name)}"
-            if cols[3].button("🗑️", key=del_key, help="Delete resume", use_container_width=True):
+            if cols[3].button("🗑️", key=del_key, help="Delete resume"):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Show file preview if requested
+            # Show content based on state
             if st.session_state.get(f"show_{view_key}", False):
-                with st.expander("", expanded=False):
+                with st.expander("", expanded=True):
                     file_content = get_resume_file(st.session_state.user_id, name)
                     if file_content and file_type == "application/pdf":
-                        # Convert bytes to base64 for PDF display
                         import base64
                         base64_pdf = base64.b64encode(file_content).decode('utf-8')
-                        # Embed PDF viewer
-                        pdf_display = f"""
+                        pdf_display = f'''
                             <iframe
                                 src="data:application/pdf;base64,{base64_pdf}"
                                 width="100%"
                                 height="600"
-                                type="application/pdf"
-                            >
-                            </iframe>
-                        """
+                                style="border: none;"
+                            ></iframe>
+                        '''
                         st.markdown(pdf_display, unsafe_allow_html=True)
                     else:
                         st.info("Preview not available for this file type")
             
-            # Show editable text content if requested
             if st.session_state.get(f"edit_{view_key}", False):
                 with st.expander("", expanded=True):
                     edited_content = st.text_area(
@@ -242,18 +238,12 @@ def render_resume_section():
                             del st.session_state[f"edit_{view_key}"]
                             st.rerun()
     
-    # Add divider before uploader
+    # File uploader section
     st.divider()
-    
-    # Initialize uploader key in session state if not exists
-    if 'uploader_key' not in st.session_state:
-        st.session_state.uploader_key = 0
-    
-    # Handle file upload last with dynamic key
     uploaded_file = st.file_uploader(
         "Upload another resume" if resumes else "Upload your first resume",
         type=["pdf", "docx", "txt"],
-        key=f"resume_uploader_{st.session_state.uploader_key}",
+        key=f"resume_uploader_{st.session_state.get('uploader_key', 0)}",
         label_visibility="collapsed"
     )
     
@@ -267,8 +257,7 @@ def render_resume_section():
                 uploaded_file.type,
                 file_content
             ):
-                # Increment the uploader key to force a fresh uploader
-                st.session_state.uploader_key += 1
+                st.session_state['uploader_key'] = st.session_state.get('uploader_key', 0) + 1
                 st.rerun()
         except Exception as e:
             st.error("Failed to process resume. Please try again.")
