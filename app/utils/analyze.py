@@ -1,19 +1,20 @@
-import os
-from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
-from .errors import AnalysisError
 import streamlit as st
+from anthropic import Anthropic
+from .errors import AnalysisError
 
 def analyze_resume_for_job(resume_content, job_content):
     """Basic analysis function"""
-    # Initialize with API key from environment
-    api_key = os.getenv('ANTHROPIC_API_KEY') or st.secrets.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        raise AnalysisError("No API key found for Claude")
+    # Get API key from Streamlit secrets
+    if 'ANTHROPIC_API_KEY' not in st.secrets:
+        raise AnalysisError("Anthropic API key not found in Streamlit secrets")
         
-    client = Anthropic(api_key=api_key)
+    # Create client with API key from secrets
+    anthropic = Anthropic(
+        api_key=st.secrets['ANTHROPIC_API_KEY']
+    )
     
     try:
-        response = client.messages.create(
+        response = anthropic.messages.create(
             model="claude-3-opus-20240229",
             messages=[{
                 "role": "user",
@@ -38,7 +39,4 @@ def analyze_resume_for_job(resume_content, job_content):
         )
         return response.content[0].text
     except Exception as e:
-        raise AnalysisError(f"Error calling Claude API: {str(e)}")
-    finally:
-        # Clean up
-        del client 
+        raise AnalysisError(f"Error calling Claude API: {str(e)}") 
