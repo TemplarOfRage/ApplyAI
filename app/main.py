@@ -98,7 +98,11 @@ def render_resume_section():
     """Render resume management section"""
     st.subheader("📄 Resume Management")
     
-    # Add PDF.js viewer
+    # Initialize view states if not exists
+    if 'view_states' not in st.session_state:
+        st.session_state.view_states = {}
+    
+    # Add PDF.js viewer styles
     st.markdown("""
         <style>
             .pdf-viewer {
@@ -157,16 +161,9 @@ def render_resume_section():
         </style>
     """, unsafe_allow_html=True)
     
-    # Initialize session state for view and edit panels if not exists
-    if 'view_states' not in st.session_state:
-        st.session_state.view_states = {}
-    if 'edit_states' not in st.session_state:
-        st.session_state.edit_states = {}
-    
     # Get current resumes first
     resumes = get_user_resumes(st.session_state.user_id)
     
-    # Show existing resumes in a table if any exist
     if resumes:
         # Create table header
         st.markdown("""
@@ -194,13 +191,15 @@ def render_resume_section():
             # View button
             view_btn_key = f"view_btn_{idx}_{hash(name)}"
             view_state_key = f"view_state_{idx}_{hash(name)}"
+            
             if cols[1].button("👁️", key=view_btn_key, help="View original file"):
                 # Toggle view state
-                st.session_state.view_states[view_state_key] = not st.session_state.view_states.get(view_state_key, False)
-                # Close edit panel if open
-                edit_state_key = f"edit_state_{idx}_{hash(name)}"
-                if edit_state_key in st.session_state.edit_states:
-                    del st.session_state.edit_states[edit_state_key]
+                current_state = st.session_state.view_states.get(view_state_key, False)
+                if current_state:
+                    del st.session_state.view_states[view_state_key]
+                else:
+                    st.session_state.view_states[view_state_key] = True
+                st.rerun()
             
             # Edit button
             edit_btn_key = f"edit_btn_{idx}_{hash(name)}"
@@ -220,24 +219,44 @@ def render_resume_section():
             
             # Show file preview if requested
             if st.session_state.view_states.get(view_state_key, False):
-                with st.expander("", expanded=True):
+                with st.expander("", expanded=False):  # Set expanded=False by default
                     file_content = get_resume_file(st.session_state.user_id, name)
                     if file_content and file_type == "application/pdf":
-                        # Create a viewer URL using Mozilla's PDF.js viewer
-                        import base64
-                        b64_pdf = base64.b64encode(file_content).decode('utf-8')
-                        viewer_url = f"https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{b64_pdf}"
+                        # Create a temporary file and serve it
+                        import tempfile
+                        import os
                         
-                        # Add close button above viewer
-                        if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
-                            del st.session_state.view_states[view_state_key]
-                            st.rerun()
-                        
-                        # Display the PDF viewer
-                        st.markdown(
-                            f'<iframe src="{viewer_url}" class="pdf-viewer"></iframe>',
-                            unsafe_allow_html=True
-                        )
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                            tmp_file.write(file_content)
+                            tmp_file.flush()
+                            
+                            # Read the file back as bytes
+                            with open(tmp_file.name, 'rb') as f:
+                                pdf_bytes = f.read()
+                            
+                            # Clean up the temp file
+                            os.unlink(tmp_file.name)
+                            
+                            # Convert to base64
+                            import base64
+                            b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+                            
+                            # Use local PDF.js viewer
+                            viewer_html = f"""
+                                <iframe 
+                                    src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{b64_pdf}"
+                                    class="pdf-viewer"
+                                    title="PDF Viewer"
+                                ></iframe>
+                            """
+                            
+                            # Add close button above viewer
+                            if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
+                                del st.session_state.view_states[view_state_key]
+                                st.rerun()
+                            
+                            # Display the PDF viewer
+                            st.markdown(viewer_html, unsafe_allow_html=True)
                     else:
                         st.info("Preview not available for this file type")
             
