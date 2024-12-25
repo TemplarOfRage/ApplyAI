@@ -96,22 +96,32 @@ def render_resume_section():
     # Custom CSS for clean layout
     st.markdown("""
         <style>
-            .resume-list {
-                margin-bottom: 1rem;
+            /* Table styles */
+            .resume-table {
+                font-size: 0.85rem;
+                width: 100%;
+                margin-top: 1rem;
             }
-            .resume-item {
+            .resume-table th {
+                color: #666;
+                font-weight: 400;
                 padding: 0.5rem;
                 border-bottom: 1px solid #eee;
             }
-            .resume-item:hover {
-                background-color: #f8f9fa;
+            .resume-table td {
+                padding: 0.5rem;
+                border-bottom: 1px solid #eee;
+                vertical-align: middle;
             }
-            .resume-name {
-                font-size: 0.9rem;
-                margin: 0;
+            /* Make buttons smaller */
+            .small-btn {
+                padding: 0 0.5rem !important;
+                height: 1.5rem !important;
+                line-height: 1.5rem !important;
+                font-size: 0.7rem !important;
             }
-            .stButton button {
-                padding: 0.25rem 0.5rem;
+            /* Smaller icons */
+            .small-icon {
                 font-size: 0.8rem;
             }
         </style>
@@ -133,15 +143,27 @@ def render_resume_section():
                                     uploaded_file.name, 
                                     content, 
                                     uploaded_file.type):
-                st.rerun()  # Immediate rerun after successful upload
+                st.rerun()
         except Exception as e:
             st.error("Failed to process resume. Please try again.")
             print(f"Error uploading resume: {str(e)}")
     
-    # Show existing resumes
+    # Show existing resumes in a table
     if resumes:
         st.divider()
-        st.markdown('<div class="resume-list">', unsafe_allow_html=True)
+        
+        # Create table header
+        st.markdown("""
+            <table class="resume-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80%">Name</th>
+                        <th style="width: 10%">View</th>
+                        <th style="width: 10%">Delete</th>
+                    </tr>
+                </thead>
+            </table>
+        """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
             cols = st.columns([8, 1, 1])
@@ -149,17 +171,17 @@ def render_resume_section():
             # Truncate filename if too long
             display_name = name if len(name) < 40 else name[:37] + "..."
             
-            # Resume name
-            cols[0].markdown(f"📄 {display_name}")
+            with cols[0]:
+                st.markdown(f'<span class="small-icon">📄</span> {display_name}', unsafe_allow_html=True)
             
-            # View button with unique key using index
+            # View button
             view_key = f"view_{idx}_{hash(name)}"
-            if cols[1].button("👁️", key=view_key, help="View resume content"):
+            if cols[1].button("👁️", key=view_key, help="View resume content", use_container_width=True):
                 st.session_state[f"show_{view_key}"] = True
             
-            # Delete button with unique key using index
+            # Delete button
             del_key = f"del_{idx}_{hash(name)}"
-            if cols[2].button("🗑️", key=del_key, help="Delete resume"):
+            if cols[2].button("🗑️", key=del_key, help="Delete resume", use_container_width=True):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
@@ -169,11 +191,10 @@ def render_resume_section():
                     st.text_area("", value=content, height=200, 
                                disabled=True, label_visibility="collapsed",
                                key=f"content_{idx}_{hash(name)}")
-                    if st.button("Hide", key=f"hide_{idx}_{hash(name)}"):
+                    if st.button("Close", key=f"hide_{idx}_{hash(name)}", 
+                               type="secondary", use_container_width=True):
                         del st.session_state[f"show_{view_key}"]
                         st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
 
 def run():
     """Main entry point for the application"""
