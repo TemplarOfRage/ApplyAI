@@ -86,3 +86,29 @@ def delete_resume(user_id: str, name: str) -> bool:
         except Exception as e:
             print(f"Error deleting resume: {str(e)}")
             return False
+
+def get_resume_file(user_id: str, name: str):
+    """Get the original file content for a resume"""
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            'SELECT file_content FROM resumes WHERE user_id = ? AND name = ?',
+            (user_id, name)
+        )
+        result = c.fetchone()
+        return result[0] if result else None
+
+def update_resume_content(user_id: str, name: str, content: str) -> bool:
+    """Update the extracted text content of a resume"""
+    with get_connection() as conn:
+        c = conn.cursor()
+        try:
+            c.execute(
+                'UPDATE resumes SET content = ? WHERE user_id = ? AND name = ?',
+                (content, user_id, name)
+            )
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating resume content: {str(e)}")
+            return False

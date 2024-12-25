@@ -137,8 +137,9 @@ def render_resume_section():
             <table class="resume-table">
                 <thead>
                     <tr>
-                        <th style="width: 80%">Name</th>
+                        <th style="width: 70%">Name</th>
                         <th style="width: 10%">View</th>
+                        <th style="width: 10%">Edit</th>
                         <th style="width: 10%">Delete</th>
                     </tr>
                 </thead>
@@ -146,7 +147,7 @@ def render_resume_section():
         """, unsafe_allow_html=True)
         
         for idx, (name, content, file_type) in enumerate(resumes):
-            cols = st.columns([8, 1, 1])
+            cols = st.columns([7, 1, 1, 1])
             
             # Truncate filename if too long
             display_name = name if len(name) < 40 else name[:37] + "..."
@@ -154,27 +155,57 @@ def render_resume_section():
             with cols[0]:
                 st.markdown(f'<span class="small-icon">📄</span> {display_name}', unsafe_allow_html=True)
             
-            # View button
+            # View button (for PDF preview)
             view_key = f"view_{idx}_{hash(name)}"
-            if cols[1].button("👁️", key=view_key, help="View resume content", use_container_width=True):
-                st.session_state[f"show_{view_key}"] = True
+            if cols[1].button("👁️", key=view_key, help="View original file", use_container_width=True):
+                # Toggle the view state
+                current_state = st.session_state.get(f"show_{view_key}", False)
+                if current_state:
+                    del st.session_state[f"show_{view_key}"]
+                else:
+                    st.session_state[f"show_{view_key}"] = True
+            
+            # Edit button (for text content)
+            edit_key = f"edit_{idx}_{hash(name)}"
+            if cols[2].button("✏️", key=edit_key, help="Edit extracted text", use_container_width=True):
+                st.session_state[f"edit_{view_key}"] = True
             
             # Delete button
             del_key = f"del_{idx}_{hash(name)}"
-            if cols[2].button("🗑️", key=del_key, help="Delete resume", use_container_width=True):
+            if cols[3].button("🗑️", key=del_key, help="Delete resume", use_container_width=True):
                 if delete_resume(st.session_state.user_id, name):
                     st.rerun()
             
-            # Show content if requested
+            # Show PDF preview if requested
             if st.session_state.get(f"show_{view_key}", False):
                 with st.expander("", expanded=True):
-                    st.text_area("", value=content, height=200, 
-                               disabled=True, label_visibility="collapsed",
-                               key=f"content_{idx}_{hash(name)}")
-                    if st.button("Close", key=f"hide_{idx}_{hash(name)}", 
-                               type="secondary", use_container_width=True):
-                        del st.session_state[f"show_{view_key}"]
-                        st.rerun()
+                    if file_type == "application/pdf":
+                        st.write("PDF Preview:")
+                        st.pdf(get_resume_file(st.session_state.user_id, name))
+                    else:
+                        st.info("Preview not available for this file type")
+            
+            # Show editable text content if requested
+            if st.session_state.get(f"edit_{view_key}", False):
+                with st.expander("", expanded=True):
+                    edited_content = st.text_area(
+                        "Edit extracted text:",
+                        value=content,
+                        height=200,
+                        key=f"content_{idx}_{hash(name)}"
+                    )
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Save", key=f"save_{idx}_{hash(name)}", 
+                                   type="primary", use_container_width=True):
+                            update_resume_content(st.session_state.user_id, name, edited_content)
+                            del st.session_state[f"edit_{view_key}"]
+                            st.rerun()
+                    with col2:
+                        if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
+                                   type="secondary", use_container_width=True):
+                            del st.session_state[f"edit_{view_key}"]
+                            st.rerun()
     
     # Add divider before uploader
     st.divider()

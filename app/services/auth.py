@@ -34,13 +34,14 @@ def init_db():
                       password_hash TEXT,
                       created_at TIMESTAMP)''')
         
-        # Create resumes table with correct schema
+        # Create resumes table with file content
         c.execute('''CREATE TABLE IF NOT EXISTS resumes
                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
                       user_id TEXT,
                       name TEXT,
                       content TEXT,
                       file_type TEXT,
+                      file_content BLOB,
                       created_at TIMESTAMP,
                       FOREIGN KEY(user_id) REFERENCES users(id))''')
         
