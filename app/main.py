@@ -37,6 +37,11 @@ def render_job_analysis_section():
         placeholder="Paste the job description here to analyze it..."
     )
     
+    custom_questions = st.text_area(
+        "Custom application questions (Optional)",
+        height=100
+    )
+    
     # Get resumes for analysis check
     resumes = get_user_resumes(st.session_state.user_id)
     has_resume = bool(resumes)
@@ -45,12 +50,53 @@ def render_job_analysis_section():
     # Show single consolidated message if either requirement is missing
     if not (has_resume and has_job_post):
         st.warning("⚠️ Please upload a resume & job posting to begin an analysis")
-        
+    
     analyze_button = st.button(
         "Analyze",
         type="primary",
         disabled=not (has_resume and has_job_post)
     )
+    
+    if analyze_button and job_post and has_resume:
+        with st.spinner("Analyzing your fit..."):
+            # Get all user's resumes
+            user_resumes = get_user_resumes(st.session_state.user_id)
+            combined_resume_context = "\n---\n".join(
+                content for _, content, _ in user_resumes
+            )
+            
+            try:
+                client = anthropic.Client(
+                    api_key=st.secrets["ANTHROPIC_API_KEY"]
+                )
+                
+                prompt = f"""Job Post: {job_post}
+                Resume Context: {combined_resume_context}
+                Custom Questions: {custom_questions if custom_questions else 'None'}
+                
+                Please analyze this application following the format:
+                
+                ## Initial Assessment
+                ## Match Analysis
+                ## Resume Strategy
+                ## Tailored Resume
+                ## Custom Responses
+                ## Follow-up Actions"""
+
+                message = client.messages.create(
+                    model="claude-3-sonnet-20240229",
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                
+                analysis = message.content[0].text
+                save_analysis(st.session_state.user_id, job_post, analysis)
+                
+                # Display analysis
+                st.markdown(analysis)
+                
+            except Exception as e:
+                st.error(f"Analysis error: {str(e)}")
 
 def render_resume_section():
     """Render resume management in sidebar"""
@@ -132,26 +178,23 @@ def run():
     if 'user_id' not in st.session_state:
         st.session_state.user_id = str(uuid.uuid4())
     
+    # Initialize configuration
+    init_streamlit_config()
+    
     st.title("ApplyAI")
     
-    # Sidebar for resume management
-    with st.sidebar:
-        st.header("📄 Resume Management")
-        render_resume_section()
-    
-    # Main content area with fixed columns
-    main_container = st.container()
-    with main_container:
-        col1, col2 = st.columns([2, 1])
+    # Create a fixed container for the entire layout
+    with st.container():
+        # Create two main columns with fixed layout
+        job_col, resume_col = st.columns([6, 4], gap="large")
         
-        # Job Analysis section (left column)
-        with col1:
+        # Job Analysis section in fixed container
+        with job_col:
             render_job_analysis_section()
         
-        # Analysis History (right column)
-        with col2:
-            st.header("📚 Analysis History")
-            render_analysis_history()
+        # Resume section in scrollable container
+        with resume_col:
+            render_resume_section()
 
 def render_sidebar():
     """Render the configuration sidebar"""
