@@ -152,15 +152,19 @@ def render_resume_section():
                 content = extract_text_from_file(uploaded_file)
                 
                 if content:
+                    # If content is a tuple, get the text content
+                    if isinstance(content, tuple):
+                        content = content[1] if len(content) > 1 else str(content)
+                    
                     st.write(f"DEBUG - Content type: {type(content)}")
                     st.write(f"DEBUG - Content length: {len(content)}")
                     
-                    # Save to database
+                    # Save to database using positional arguments
                     if save_resume(
-                        user_id=st.session_state.user_id,
-                        filename=uploaded_file.name,
-                        content=content,
-                        file_type=uploaded_file.type
+                        st.session_state.user_id,
+                        uploaded_file.name,
+                        content,
+                        uploaded_file.type
                     ):
                         st.success(f"Successfully uploaded: {uploaded_file.name}")
                         # Refresh resumes in session state

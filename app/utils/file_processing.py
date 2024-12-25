@@ -5,30 +5,48 @@ from typing import Optional, Tuple
 from io import BytesIO
 import docx
 import io
+import pdfplumber
 
 def extract_text_from_file(uploaded_file):
     """Extract text from various file types"""
     try:
         # Debug the file
         st.write(f"DEBUG - Extracting text from {uploaded_file.name}")
+        st.write(f"DEBUG - File type: {uploaded_file.type}")
         
         if uploaded_file.type == "application/pdf":
-            # Read PDF
+            # Read PDF using pdfplumber
             try:
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+                # Get the PDF bytes
+                pdf_bytes = uploaded_file.read()
+                st.write(f"DEBUG - PDF bytes length: {len(pdf_bytes)}")
+                
+                # Create a BytesIO object
+                pdf_io = io.BytesIO(pdf_bytes)
+                
+                # Extract text using pdfplumber
                 text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
+                with pdfplumber.open(pdf_io) as pdf:
+                    for page in pdf.pages:
+                        extracted = page.extract_text()
+                        if extracted:
+                            text += extracted + "\n"
                 
                 # Debug extracted text
                 st.write(f"DEBUG - Extracted PDF text length: {len(text)}")
+                if len(text) > 0:
+                    st.write("DEBUG - First 100 chars:", text[:100])
+                
                 if len(text) < 10:  # Suspicious if too short
                     st.warning("Warning: Very little text extracted from PDF")
+                    return None
                 
                 return text
                 
             except Exception as e:
                 st.error(f"PDF extraction error: {str(e)}")
+                import traceback
+                st.write("DEBUG - PDF extraction error details:", traceback.format_exc())
                 raise
                 
         elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
