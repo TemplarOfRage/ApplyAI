@@ -211,21 +211,25 @@ def render_resume_section():
                 with st.expander("", expanded=True):
                     file_content = get_resume_file(st.session_state.user_id, name)
                     if file_content and file_type == "application/pdf":
-                        # Create a temporary file to display the PDF
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                            tmp_file.write(file_content)
-                            tmp_file.flush()
-                            
-                            # Display PDF using st.components.iframe
-                            st.components.iframe(
-                                f"data:application/pdf;base64,{base64.b64encode(file_content).decode('utf-8')}",
-                                height=600,
-                                scrolling=True
+                        col1, col2 = st.columns([3,1])
+                        with col1:
+                            st.download_button(
+                                "📄 Open PDF in new tab",
+                                file_content,
+                                file_name=name,
+                                mime="application/pdf",
+                                key=f"download_{idx}_{hash(name)}",
+                                use_container_width=True,
                             )
-                            
-                            # Cleanup temp file
-                            tmp_file.close()
-                            os.unlink(tmp_file.name)
+                        with col2:
+                            if st.button("Close", key=f"close_view_{idx}_{hash(name)}"):
+                                del st.session_state.view_states[view_state_key]
+                                st.rerun()
+                        
+                        st.markdown(
+                            "<small style='color: #666;'>Tip: If the PDF doesn't open automatically, check your browser's popup settings</small>",
+                            unsafe_allow_html=True
+                        )
                     else:
                         st.info("Preview not available for this file type")
             
