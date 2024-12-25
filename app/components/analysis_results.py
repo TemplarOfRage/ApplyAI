@@ -118,6 +118,10 @@ def render_analysis_results(analysis_text, user_id=None, resume_name=None, job_c
     if not analysis_text:
         return
         
+    # Save analysis to database if we have all required info
+    if user_id and resume_name and job_content:
+        save_analysis(user_id, resume_name, job_content, analysis_text)
+    
     st.markdown("### Analysis Results")
     
     # Parse all analyses
@@ -125,67 +129,26 @@ def render_analysis_results(analysis_text, user_id=None, resume_name=None, job_c
     
     # Create tabs for each analysis
     if len(analyses) > 1:
-        # Multiple resumes - create a tab for each
         resume_tabs = st.tabs([f"📄 {analysis['resume_name']}" for analysis in analyses])
         
         for tab, analysis in zip(resume_tabs, analyses):
             with tab:
                 render_single_analysis(analysis)
                 
-        # Show comparison if available
-        if "Finally, if there are multiple resumes" in analysis_text:
-            with st.expander("📊 Resume Comparison"):
-                comparison = analysis_text.split("Finally, if there are multiple resumes")[-1]
-                st.markdown(comparison)
+                # Show history button
+                if st.button("📊 View Analysis History", key=f"history_{analysis['resume_name']}"):
+                    history = get_resume_history(user_id, analysis['resume_name'])
+                    if history:
+                        st.markdown("### Previous Analyses")
+                        for date, job, result in history:
+                            with st.expander(f"Analysis from {date}"):
+                                st.markdown("**Job Description:**")
+                                st.text(job)
+                                st.markdown("**Analysis:**")
+                                st.markdown(result)
     else:
         # Single resume - use the original tab layout
-        analysis = analyses[0]
-        match_tab, overall_tab, quals_tab, missing_tab, improve_tab = st.tabs([
-            "Match Score", 
-            "Overall",
-            "Qualifications", 
-            "Missing Skills", 
-            "Improvements"
-        ])
-        
-        with match_tab:
-            st.markdown("#### Match Score")
-            score = analysis['match_score']
-            st.progress(float(score)/100)
-            st.markdown(f"### {score}%")
-            
-            if score >= 80:
-                st.success("Strong Match! 🌟")
-            elif score >= 60:
-                st.warning("Good Match with Room for Improvement 📈")
-            else:
-                st.error("Consider Targeting Different Roles 🎯")
-        
-        with overall_tab:
-            st.markdown("#### Overall Assessment")
-            for point in analysis['overall']:
-                st.markdown(f"• {point}")
-            
-        with quals_tab:
-            st.markdown("#### Key Qualifications")
-            for qual in analysis['qualifications']:
-                st.success(f"• {qual}")
-        
-        with missing_tab:
-            st.markdown("#### Missing Skills")
-            for skill in analysis['missing']:
-                st.error(f"• {skill}")
-        
-        with improve_tab:
-            st.markdown("#### Improvements")
-            for imp in analysis['improvements']:
-                st.info(f"• {imp}")
-            
-            st.markdown("""
-                <div style='margin-top: 1em'>
-                    <small>Use these suggestions to improve your resume before applying.</small>
-                </div>
-            """, unsafe_allow_html=True)
+        render_single_analysis(analyses[0])
 
 def render_single_analysis(analysis):
     """Render a single analysis result"""

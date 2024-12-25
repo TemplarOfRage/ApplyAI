@@ -5,25 +5,11 @@ from .errors import AnalysisError
 def analyze_resume_for_job(resumes, job_content):
     """Analyze multiple resumes against a job posting"""
     try:
-        # Debug the resume data
-        st.write("DEBUG - Resume data type:", type(resumes))
-        st.write("DEBUG - Resume data:", resumes)
-        
         client = Anthropic(api_key=st.secrets['ANTHROPIC_API_KEY'])
-        
-        # Handle single resume case
-        if not isinstance(resumes, list):
-            resumes = [resumes]
         
         # Build resume context
         resume_context = ""
-        for idx, resume_data in enumerate(resumes):
-            st.write(f"DEBUG - Processing resume {idx}:", resume_data)
-            
-            # Extract name and content
-            name = resume_data[0] if isinstance(resume_data, (tuple, list)) else "Resume"
-            content = resume_data[1] if isinstance(resume_data, (tuple, list)) else str(resume_data)
-            
+        for idx, (name, content, file_type, created_at, updated_at) in enumerate(resumes):
             resume_context += f"\nResume {idx + 1} - {name}:\n{content}\n"
         
         prompt = f"""
@@ -37,7 +23,7 @@ def analyze_resume_for_job(resumes, job_content):
 
         For each resume, provide:
 
-        ===== RESUME [Number] - [Name] =====
+        ===== RESUME [Number] - {name} =====
         Match Score: [0-100]%
 
         Overall Assessment:
@@ -60,6 +46,8 @@ def analyze_resume_for_job(resumes, job_content):
         • [Improvement 2]
         • [Improvement 3]
         ===============================
+
+        Finally, if there are multiple resumes, provide a comparison and recommendation for which resume is best suited for this position.
         """
         
         response = client.messages.create(
