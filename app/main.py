@@ -102,7 +102,7 @@ def render_resume_section():
     if 'edit_states' not in st.session_state:
         st.session_state.edit_states = {}
     
-    # Add styles
+    # Update styles to REALLY remove all boxes and improve alignment
     st.markdown("""
         <style>
             /* Table styles */
@@ -121,29 +121,32 @@ def render_resume_section():
             .resume-table th:first-child {
                 text-align: left !important;
             }
-            /* Center align action buttons */
+            /* Aggressively remove button styling */
+            .stButton > button,
+            .stDownloadButton > button {
+                background: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                width: auto !important;
+                height: auto !important;
+                line-height: normal !important;
+            }
+            .stButton > button:hover,
+            .stDownloadButton > button:hover {
+                background: none !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            /* Center icons */
             div[data-testid="column"] {
-                text-align: center !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
             }
             div[data-testid="column"]:first-child {
-                text-align: left !important;
-            }
-            /* Remove button styling completely */
-            .stButton > button {
-                all: unset;
-                cursor: pointer;
-                font-size: 1.2rem;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .stDownloadButton > button {
-                all: unset;
-                cursor: pointer;
-                font-size: 1.2rem;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
+                justify-content: flex-start !important;
             }
             /* File name styles */
             .file-name {
@@ -152,8 +155,25 @@ def render_resume_section():
                 gap: 0.5rem;
                 padding: 0.75rem 0;
             }
+            /* Delete dialog styles */
+            .delete-dialog {
+                padding: 1rem;
+                margin-top: 0.5rem;
+                background: #fff;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .delete-dialog .actions {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
         </style>
     """, unsafe_allow_html=True)
+    
+    # Initialize delete confirmation state
+    if 'delete_confirmation' not in st.session_state:
+        st.session_state.delete_confirmation = None
     
     # Get current resumes
     resumes = get_user_resumes(st.session_state.user_id)
@@ -184,7 +204,7 @@ def render_resume_section():
             
             # Edit button
             edit_key = f"edit_{idx}_{hash(name)}"
-            if cols[1].button("✏️", key=f"edit_btn_{idx}", help="Edit extracted text"):
+            if cols[1].button("✏️", key=f"edit_btn_{idx}"):
                 st.session_state.edit_states[edit_key] = not st.session_state.edit_states.get(edit_key, False)
                 st.rerun()
             
@@ -196,27 +216,28 @@ def render_resume_section():
                     file_content,
                     file_name=name,
                     mime=file_type,
-                    help="Download resume",
                 )
             
-            # Delete button with toast confirmation
-            delete_key = f"delete_{idx}_{hash(name)}"
+            # Delete button
+            if cols[3].button("🗑️", key=f"del_btn_{idx}"):
+                st.session_state.delete_confirmation = name
             
-            if cols[3].button("🗑️", key=f"del_btn_{idx}", help="Delete resume"):
-                # Show toast with confirmation buttons
-                confirmation = st.toast(
-                    f"Delete {name}?",
-                    icon="🗑️"
-                )
-                col1, col2 = confirmation.columns(2)
-                with col1:
-                    if st.button("Confirm", key=f"confirm_del_{idx}", type="primary"):
-                        if delete_resume(st.session_state.user_id, name):
-                            st.toast("File deleted successfully", icon="✅")
+            # Show delete confirmation if this is the file being deleted
+            if st.session_state.delete_confirmation == name:
+                with st.container():
+                    st.markdown('<div class="delete-dialog">', unsafe_allow_html=True)
+                    st.warning(f"Are you sure you want to delete {name}?")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Confirm", key=f"confirm_del_{idx}", type="primary"):
+                            if delete_resume(st.session_state.user_id, name):
+                                st.session_state.delete_confirmation = None
+                                st.rerun()
+                    with col2:
+                        if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
+                            st.session_state.delete_confirmation = None
                             st.rerun()
-                with col2:
-                    if st.button("Cancel", key=f"cancel_del_{idx}", type="secondary"):
-                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
