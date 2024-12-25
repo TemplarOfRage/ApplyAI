@@ -125,65 +125,38 @@ def render_resume_section():
     # Update styles to be more compact
     st.markdown("""
         <style>
-            /* Table styles */
-            .resume-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 0.5rem;
-            }
-            .resume-table th {
-                padding: 0.5rem;
-                color: #666;
-                font-weight: 500;
-                border-bottom: 1px solid #eee;
+            /* Center icons in columns */
+            div[data-testid="column"] {
                 text-align: center !important;
             }
-            .resume-table th:first-child {
-                text-align: left !important;
-            }
-            /* Center icons */
-            div[data-testid="column"] {
+            
+            /* Center button contents */
+            .stButton > button {
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
             }
-            div[data-testid="column"]:first-child {
-                justify-content: flex-start !important;
+            
+            /* Existing resume table styles */
+            .resume-table {
+                width: 100%;
+                border-collapse: collapse;
             }
-            /* Remove button styling */
-            .stButton > button,
-            .stDownloadButton > button {
-                background: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                box-shadow: none !important;
+            .resume-table th {
+                padding: 0.5rem;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
             }
-            /* Delete confirmation styles */
-            .delete-confirm {
-                background: white;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 12px;
-                margin: 8px 0;
-                width: fit-content;
+            .resume-table th:not(:first-child) {
+                text-align: center;
             }
-            .delete-buttons {
+            .file-name {
                 display: flex;
-                gap: 12px;
-                margin-top: 12px;
+                align-items: center;
+                gap: 0.5rem;
             }
-            .delete-buttons button {
-                min-height: 32px !important;
-                padding: 4px 12px !important;
-            }
-            .delete-button button {
-                background-color: #ff4b4b !important;
-                color: white !important;
-            }
-            .cancel-button button {
-                background-color: #f0f2f6 !important;
-                color: #333 !important;
+            .file-icon {
+                opacity: 0.6;
             }
         </style>
     """, unsafe_allow_html=True)
