@@ -179,23 +179,27 @@ def render_resume_section():
     # Add divider before uploader
     st.divider()
     
-    # Handle file upload last
+    # Initialize uploader key in session state if not exists
+    if 'uploader_key' not in st.session_state:
+        st.session_state.uploader_key = 0
+    
+    # Handle file upload last with dynamic key
     uploaded_file = st.file_uploader(
         "Upload another resume" if resumes else "Upload your first resume",
         type=["pdf", "docx", "txt"],
-        key="resume_uploader",
-        on_change=None  # Ensure no automatic callbacks
+        key=f"resume_uploader_{st.session_state.uploader_key}"
     )
     
-    if uploaded_file is not None:  # Check explicitly for file
+    if uploaded_file is not None:
         try:
             content = extract_text_from_file(uploaded_file)
             if content and save_resume(st.session_state.user_id, 
                                     uploaded_file.name, 
                                     content, 
                                     uploaded_file.type):
-                st.rerun()  # Force immediate rerun after save
-                return  # Exit function to prevent further rendering
+                # Increment the uploader key to force a fresh uploader
+                st.session_state.uploader_key += 1
+                st.rerun()
         except Exception as e:
             st.error("Failed to process resume. Please try again.")
             print(f"Error uploading resume: {str(e)}")
