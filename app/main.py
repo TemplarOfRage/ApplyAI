@@ -60,8 +60,35 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Debug: Show current user ID
-        print(f"\n=== Current User ID: {st.session_state.get('user_id', 'Not set')} ===")
+        # Hide the default file uploader UI elements
+        st.markdown("""
+            <style>
+                /* Hide the uploaded file info */
+                .uploadedFile {
+                    display: none !important;
+                }
+                
+                /* Make the upload area more compact */
+                .stFileUploader > div {
+                    padding: 0.5rem !important;
+                }
+                
+                /* Improve button layout */
+                .stButton button {
+                    padding: 0.25rem 0.75rem !important;
+                    font-size: 0.8rem !important;
+                    min-height: 0 !important;
+                    height: auto !important;
+                    white-space: nowrap !important;
+                }
+                
+                /* Make columns more compact */
+                .row-widget.stHorizontal > div {
+                    flex: 0 1 auto !important;
+                    min-width: auto !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
         
         uploaded_file = st.file_uploader(
             "Upload Resume",
@@ -70,7 +97,6 @@ def render_resume_section(col2):
         )
         
         if uploaded_file is not None:
-            print(f"\n=== Processing Upload: {uploaded_file.name} ===")
             try:
                 content = extract_text_from_file(uploaded_file)
                 if content:
@@ -81,58 +107,51 @@ def render_resume_section(col2):
                         uploaded_file.type
                     )
                     if success:
-                        print("Resume saved successfully")
-                        # Clear the uploader and force refresh
-                        st.session_state.pop('resume_uploader', None)
+                        # Clear the uploader state completely
+                        st.session_state.resume_uploader = None
+                        uploaded_file = None
                         st.rerun()
-                    else:
-                        print("Failed to save resume")
             except Exception as e:
                 print(f"Error processing upload: {str(e)}")
         
         st.divider()
-        
-        # Debug: Show resumes before rendering
-        print("\n=== Checking Saved Resumes Before Render ===")
-        resumes = get_user_resumes(st.session_state.user_id)
-        print(f"Number of resumes found: {len(resumes)}")
-        
         render_saved_resumes()
 
 def render_saved_resumes():
     """Render saved resumes section"""
     st.subheader("Saved Resumes")
-    
-    # Debug print
-    print("\n=== Checking Saved Resumes ===")
-    print(f"User ID: {st.session_state.get('user_id', 'Not set')}")
-    
     resumes = get_user_resumes(st.session_state.user_id)
-    print(f"Found {len(resumes)} saved resumes")
     
     if not resumes:
         st.info("No resumes uploaded yet")
     else:
         for name, content, file_type in resumes:
-            col1, col2, col3 = st.columns([3, 1, 1])
+            # Use columns with better proportions
+            col1, col2, col3 = st.columns([6, 2, 2])
             
             with col1:
-                st.markdown(f"📄 {name}")
+                st.markdown(f"""
+                    <div style="padding: 0.5rem 0; font-size: 0.9rem;">
+                        📄 <span style="vertical-align: middle;">{name}</span>
+                    </div>
+                """, unsafe_allow_html=True)
             
             with col2:
-                if st.button("Show Content", key=f"show_{name}"):
-                    st.session_state[f"show_content_{name}"] = True
+                st.button("📄 View", key=f"show_{name}", 
+                         help="Show resume content",
+                         use_container_width=True)
             
             with col3:
-                if st.button("Delete", key=f"del_{name}"):
-                    if delete_resume(st.session_state.user_id, name):
-                        st.rerun()
+                st.button("🗑️ Delete", key=f"del_{name}", 
+                         help="Delete resume",
+                         use_container_width=True)
             
-            if st.session_state.get(f"show_content_{name}", False):
-                with st.expander("Extracted Content", expanded=True):
-                    st.text_area("", value=content, height=200, disabled=True)
+            if st.session_state.get(f"show_{name}", False):
+                with st.expander("Resume Content", expanded=True):
+                    st.text_area("", value=content, height=200, 
+                               disabled=True, label_visibility="collapsed")
                     if st.button("Hide", key=f"hide_{name}"):
-                        del st.session_state[f"show_content_{name}"]
+                        del st.session_state[f"show_{name}"]
                         st.rerun()
 
 def render_analysis_history():
