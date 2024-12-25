@@ -60,7 +60,7 @@ def render_resume_section(col2):
     with col2:
         st.subheader("📄 Your Resumes")
         
-        # Hide the default file uploader UI elements
+        # Hide the default file uploader UI elements and improve layout
         st.markdown("""
             <style>
                 /* Hide the uploaded file info */
@@ -75,17 +75,28 @@ def render_resume_section(col2):
                 
                 /* Improve button layout */
                 .stButton button {
-                    padding: 0.25rem 0.75rem !important;
+                    padding: 0.25rem 0.5rem !important;
                     font-size: 0.8rem !important;
                     min-height: 0 !important;
-                    height: auto !important;
-                    white-space: nowrap !important;
+                    height: 2em !important;
+                    line-height: 1 !important;
+                    width: auto !important;
+                    flex-shrink: 0 !important;
                 }
                 
-                /* Make columns more compact */
-                .row-widget.stHorizontal > div {
-                    flex: 0 1 auto !important;
-                    min-width: auto !important;
+                /* Ensure columns stay within bounds */
+                .row-widget.stHorizontal {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    overflow: hidden !important;
+                }
+                
+                /* Make resume name truncate with ellipsis */
+                .resume-name {
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    max-width: 200px !important;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -107,9 +118,7 @@ def render_resume_section(col2):
                         uploaded_file.type
                     )
                     if success:
-                        # Clear the uploader state completely
                         st.session_state.resume_uploader = None
-                        uploaded_file = None
                         st.rerun()
             except Exception as e:
                 print(f"Error processing upload: {str(e)}")
@@ -126,26 +135,30 @@ def render_saved_resumes():
         st.info("No resumes uploaded yet")
     else:
         for name, content, file_type in resumes:
-            # Use columns with better proportions
-            col1, col2, col3 = st.columns([6, 2, 2])
+            # Use a container for better layout control
+            with st.container():
+                col1, col2, col3 = st.columns([5, 1, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                        <div class="resume-name" style="padding: 0.5rem 0;">
+                            📄 {name}
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button("View", key=f"view_{name}", use_container_width=True):
+                        st.session_state[f"show_{name}"] = True
+                
+                with col3:
+                    if st.button("Delete", key=f"del_{name}", use_container_width=True):
+                        if delete_resume(st.session_state.user_id, name):
+                            # Clear any associated session state
+                            if f"show_{name}" in st.session_state:
+                                del st.session_state[f"show_{name}"]
+                            st.rerun()
             
-            with col1:
-                st.markdown(f"""
-                    <div style="padding: 0.5rem 0; font-size: 0.9rem;">
-                        📄 <span style="vertical-align: middle;">{name}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.button("📄 View", key=f"show_{name}", 
-                         help="Show resume content",
-                         use_container_width=True)
-            
-            with col3:
-                st.button("🗑️ Delete", key=f"del_{name}", 
-                         help="Delete resume",
-                         use_container_width=True)
-            
+            # Show content if button was clicked
             if st.session_state.get(f"show_{name}", False):
                 with st.expander("Resume Content", expanded=True):
                     st.text_area("", value=content, height=200, 

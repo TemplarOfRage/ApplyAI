@@ -166,18 +166,33 @@ def get_user_resumes(user_id):
             conn.close()
 
 def delete_resume(user_id, filename):
-    """Delete a resume"""
+    """Delete a resume from the database"""
+    print(f"\n=== Deleting Resume ===")
+    print(f"User ID: {user_id}")
+    print(f"Filename: {filename}")
+    
     try:
         conn = sqlite3.connect('applyai.db')
         c = conn.cursor()
         
+        # Delete the resume
         c.execute('DELETE FROM resumes WHERE user_id = ? AND filename = ?',
                  (user_id, filename))
         
+        # Commit the transaction
         conn.commit()
-        return True
+        
+        # Verify deletion
+        c.execute('SELECT COUNT(*) FROM resumes WHERE user_id = ? AND filename = ?',
+                 (user_id, filename))
+        count = c.fetchone()[0]
+        
+        print(f"Delete successful: {count == 0}")
+        return count == 0
+        
     except Exception as e:
-        st.error(f"Error deleting resume: {str(e)}")
+        print(f"Error deleting resume: {str(e)}")
         return False
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
