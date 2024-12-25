@@ -7,6 +7,7 @@ from app.services.auth import check_authentication, logout
 from app.services.resume import save_resume, get_user_resumes, delete_resume, extract_text_from_file, init_database
 from app.services.analysis import save_analysis, get_user_analysis_history, analyze_job_posting, extract_text_from_url
 from app.config import init_streamlit_config, get_api_key, render_config_sidebar
+import uuid
 
 def render_page():
     """Render the main page with fixed columns"""
@@ -201,30 +202,15 @@ def render_analysis_history():
                 st.markdown(analysis)
 
 def run():
-    """Main application entry point"""
-    init_streamlit_config()
+    """Main entry point for the application"""
+    # Initialize session state
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = str(uuid.uuid4())
     
-    if not check_authentication():
-        return
-        
     st.title("ApplyAI")
     
-    # Render configuration sidebar and get settings
-    system_prompt, analysis_prompt, temperature = render_config_sidebar()
-    
-    # Add logout button to sidebar
-    with st.sidebar:
-        if st.button("🚪 Logout", type="primary"):
-            logout()
-            st.rerun()
-    
-    # Create main layout
-    col1, col2 = st.columns([3, 2])
-    
-    # Render main sections
-    render_job_analysis_section(col1)
-    render_resume_section(col2)
-    render_analysis_history()
+    # Render the main page with fixed columns
+    render_page()
 
 if __name__ == "__main__":
     run()
