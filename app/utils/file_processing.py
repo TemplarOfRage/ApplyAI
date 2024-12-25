@@ -10,74 +10,60 @@ import pdfplumber
 def extract_text_from_file(uploaded_file):
     """Extract text from various file types"""
     try:
-        # Debug the file
-        st.write(f"DEBUG - Extracting text from {uploaded_file.name}")
-        st.write(f"DEBUG - File type: {uploaded_file.type}")
-        
         if uploaded_file.type == "application/pdf":
-            # Read PDF using pdfplumber
             try:
-                # Get the PDF bytes
-                pdf_bytes = uploaded_file.read()
-                st.write(f"DEBUG - PDF bytes length: {len(pdf_bytes)}")
-                
-                # Create a BytesIO object
-                pdf_io = io.BytesIO(pdf_bytes)
+                # Create a BytesIO object from the uploaded file's bytes
+                pdf_bytes = io.BytesIO(uploaded_file.getvalue())
                 
                 # Extract text using pdfplumber
-                text = ""
-                with pdfplumber.open(pdf_io) as pdf:
+                with pdfplumber.open(pdf_bytes) as pdf:
+                    text = ""
                     for page in pdf.pages:
-                        extracted = page.extract_text()
-                        if extracted:
-                            text += extracted + "\n"
+                        text += page.extract_text() + "\n"
                 
-                # Debug extracted text
-                st.write(f"DEBUG - Extracted PDF text length: {len(text)}")
-                if len(text) > 0:
-                    st.write("DEBUG - First 100 chars:", text[:100])
-                
-                if len(text) < 10:  # Suspicious if too short
-                    st.warning("Warning: Very little text extracted from PDF")
-                    return None
+                # Debug info
+                with st.expander("🔍 Debug Information", expanded=False):
+                    st.markdown(f"""
+                        <p class='debug-text'>PDF Extraction:</p>
+                        <p class='debug-text'>- Pages processed: {len(pdf.pages)}</p>
+                        <p class='debug-text'>- Characters extracted: {len(text)}</p>
+                        <p class='debug-text'>- First 100 chars: {text[:100]}</p>
+                    """, unsafe_allow_html=True)
                 
                 return text
                 
             except Exception as e:
                 st.error(f"PDF extraction error: {str(e)}")
-                import traceback
-                st.write("DEBUG - PDF extraction error details:", traceback.format_exc())
-                raise
+                return None
                 
         elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            # Read DOCX
             try:
-                doc = docx.Document(io.BytesIO(uploaded_file.read()))
+                # Read DOCX
+                doc = docx.Document(io.BytesIO(uploaded_file.getvalue()))
                 text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                st.write(f"DEBUG - Extracted DOCX text length: {len(text)}")
                 return text
+                
             except Exception as e:
                 st.error(f"DOCX extraction error: {str(e)}")
-                raise
+                return None
                 
         elif uploaded_file.type == "text/plain":
-            # Read TXT
             try:
-                text = uploaded_file.read().decode('utf-8')
-                st.write(f"DEBUG - Extracted TXT text length: {len(text)}")
+                # Read TXT
+                text = uploaded_file.getvalue().decode('utf-8')
                 return text
+                
             except Exception as e:
                 st.error(f"TXT extraction error: {str(e)}")
-                raise
+                return None
                 
         else:
-            raise ValueError(f"Unsupported file type: {uploaded_file.type}")
+            st.error(f"Unsupported file type: {uploaded_file.type}")
+            return None
             
     except Exception as e:
         st.error(f"Error extracting text: {str(e)}")
-        import traceback
-        st.write("DEBUG - Full extraction error:", traceback.format_exc())
-        raise
+        return None
 
 def extract_text_from_docx(docx_file) -> Optional[str]:
     """
