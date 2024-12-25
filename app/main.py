@@ -137,134 +137,29 @@ def truncate_filename(filename, max_length=30):
     return name[:max_length-5] + '...' + ext
 
 def render_resume_section():
-    # Initialize states
-    if 'resumes' not in st.session_state:
-        st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-    if 'last_uploaded_files' not in st.session_state:
-        st.session_state.last_uploaded_files = set()
-    if 'editing_resume' not in st.session_state:
-        st.session_state.editing_resume = None
-    
-    uploaded_files = st.file_uploader(
-        "Upload Resume(s)",
-        type=['pdf', 'docx', 'txt'],
-        accept_multiple_files=True,
-        key='resume_uploader'
+    uploaded_file = st.file_uploader(
+        "Upload PDF Resume",
+        type=['pdf'],
+        key='pdf_uploader'
     )
     
-    # Debug and File Management Section
-    with st.expander("🔍 Resume Management", expanded=True):
-        st.markdown("""
-            <style>
-                .debug-text {
-                    font-size: 0.7em;
-                    color: #666;
-                    font-family: monospace;
-                    margin: 0;
-                    padding: 0;
-                    line-height: 1.2;
-                }
-                .file-stats {
-                    border-left: 2px solid #eee;
-                    padding-left: 10px;
-                    margin: 5px 0;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # Show stored resumes and their stats
-        stored_resumes = get_user_resumes(st.session_state.user_id)
-        if stored_resumes:
-            for idx, resume_data in enumerate(stored_resumes):
-                # Safely unpack resume data with defaults
-                name = resume_data[0] if len(resume_data) > 0 else "Untitled"
-                content = resume_data[1] if len(resume_data) > 1 else ""
-                file_type = resume_data[2] if len(resume_data) > 2 else "text/plain"
-                created_at = resume_data[3] if len(resume_data) > 3 else "Unknown"
-                updated_at = resume_data[4] if len(resume_data) > 4 else "Unknown"
+    if uploaded_file:
+        text = extract_text_from_pdf(uploaded_file)
+        if text:
+            st.success(f"Successfully extracted {len(text)} characters")
+            
+            # Show the full text in an expander
+            with st.expander("View Full Text"):
+                st.text_area("Extracted Content", text, height=300)
                 
-                with st.container():
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    
-                    # File info
-                    with col1:
-                        st.markdown(f"""
-                            <div class='file-stats'>
-                                <p class='debug-text'>📄 {name}</p>
-                                <p class='debug-text'>Type: {file_type}</p>
-                                <p class='debug-text'>Length: {len(content)} chars</p>
-                                <p class='debug-text'>Updated: {updated_at}</p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # View/Edit button
-                    if col2.button("View/Edit", key=f"edit_{idx}"):
-                        st.session_state.editing_resume = idx
-                    
-                    # Delete button
-                    if col3.button("Delete", key=f"del_{idx}"):
-                        if delete_resume(st.session_state.user_id, name):
-                            st.toast(f"🗑️ Deleted: {name}")
-                            st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-                            st.rerun()
-                
-                # Show editor if this resume is being edited
-                if st.session_state.editing_resume == idx:
-                    edited_content = st.text_area(
-                        f"Edit content for {name}",
-                        value=content,
-                        height=300,
-                        key=f"content_{idx}"
-                    )
-                    
-                    col1, col2 = st.columns([1, 4])
-                    if col1.button("Save", key=f"save_{idx}"):
-                        if save_resume(st.session_state.user_id, name, edited_content, file_type):
-                            st.toast("✅ Changes saved!")
-                            st.session_state.editing_resume = None
-                            st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-                            st.rerun()
-                    if col2.button("Cancel", key=f"cancel_{idx}"):
-                        st.session_state.editing_resume = None
-                        st.rerun()
-                
-                st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
-        else:
-            st.markdown("<p class='debug-text'>No resumes stored yet</p>", unsafe_allow_html=True)
-    
-    # Handle new uploads
-    if uploaded_files:
-        current_files = {f.name for f in uploaded_files}
-        new_files = current_files - st.session_state.last_uploaded_files
-        
-        for uploaded_file in uploaded_files:
-            if uploaded_file.name in new_files:
-                try:
-                    content = extract_text_from_file(uploaded_file)
-                    
-                    if content:
-                        if isinstance(content, tuple):
-                            content = content[1] if len(content) > 1 else str(content)
-                        
-                        if save_resume(
-                            st.session_state.user_id,
-                            uploaded_file.name,
-                            content,
-                            uploaded_file.type
-                        ):
-                            st.toast(f"✅ Successfully uploaded: {uploaded_file.name}")
-                            st.session_state.resumes = get_user_resumes(st.session_state.user_id)
-                        else:
-                            st.toast(f"❌ Failed to save {uploaded_file.name}")
-                    else:
-                        st.toast(f"❌ No content extracted from {uploaded_file.name}")
-                        
-                except Exception as e:
-                    st.toast(f"❌ Error processing {uploaded_file.name}")
-                    with st.expander("Error Details", expanded=False):
-                        st.markdown(f"<p class='debug-text'>{str(e)}</p>", unsafe_allow_html=True)
-        
-        st.session_state.last_uploaded_files = current_files
+                if st.button("Save to Database"):
+                    if save_resume(
+                        st.session_state.user_id,
+                        uploaded_file.name,
+                        text,
+                        uploaded_file.type
+                    ):
+                        st.success("Saved to database!")
 
 def run():
     """Main entry point for the application"""

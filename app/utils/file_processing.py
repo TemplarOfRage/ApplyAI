@@ -2,33 +2,29 @@ import PyPDF2
 import io
 import streamlit as st
 
-def extract_text_from_file(uploaded_file):
-    """Extract text from various file types"""
+def extract_text_from_pdf(uploaded_file):
+    """Extract text from PDF files"""
     try:
-        if uploaded_file.type == "application/pdf":
-            # Create a PDF reader object
-            pdf_bytes = io.BytesIO(uploaded_file.getvalue())
-            pdf_reader = PyPDF2.PdfReader(pdf_bytes)
+        # Create PDF reader object
+        pdf_bytes = io.BytesIO(uploaded_file.getvalue())
+        reader = PyPDF2.PdfReader(pdf_bytes)
+        
+        # Extract text
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
             
-            # Extract text from all pages
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-            
-            # Debug info
-            st.write(f"DEBUG - Extracted {len(text)} characters from PDF")
-            return text
-            
-        elif uploaded_file.type == "text/plain":
-            # For text files, simply decode the content
-            text = uploaded_file.getvalue().decode('utf-8')
-            st.write(f"DEBUG - Extracted {len(text)} characters from text file")
-            return text
-            
-        else:
-            st.error(f"Unsupported file type: {uploaded_file.type}")
+        # Quick validation
+        if not text.strip():
+            st.error("No text could be extracted from the PDF")
             return None
             
+        # Preview the extracted text
+        with st.expander("Preview Extracted Text"):
+            st.text(text[:500] + "..." if len(text) > 500 else text)
+            
+        return text
+        
     except Exception as e:
-        st.error(f"Error extracting text: {str(e)}")
+        st.error(f"Failed to process PDF: {str(e)}")
         return None
