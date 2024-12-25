@@ -211,25 +211,30 @@ def render_resume_section():
                 with st.expander("", expanded=True):
                     file_content = get_resume_file(st.session_state.user_id, name)
                     if file_content and file_type == "application/pdf":
-                        col1, col2 = st.columns([3,1])
-                        with col1:
-                            st.download_button(
-                                "📄 Open PDF in new tab",
-                                file_content,
-                                file_name=name,
-                                mime="application/pdf",
-                                key=f"download_{idx}_{hash(name)}",
-                                use_container_width=True,
-                            )
-                        with col2:
-                            if st.button("Close", key=f"close_view_{idx}_{hash(name)}"):
-                                del st.session_state.view_states[view_state_key]
-                                st.rerun()
+                        # Convert PDF to base64
+                        import base64
+                        b64_pdf = base64.b64encode(file_content).decode('utf-8')
                         
-                        st.markdown(
-                            "<small style='color: #666;'>Tip: If the PDF doesn't open automatically, check your browser's popup settings</small>",
-                            unsafe_allow_html=True
-                        )
+                        # Embed PDF viewer with specific browser settings
+                        pdf_viewer = f"""
+                            <div style="width: 100%; height: 600px; overflow: hidden; border-radius: 4px; border: 1px solid #eee;">
+                                <iframe
+                                    src="data:application/pdf;base64,{b64_pdf}#toolbar=0&navpanes=0"
+                                    width="100%"
+                                    height="100%"
+                                    style="border: none; background: white;"
+                                    sandbox="allow-scripts allow-same-origin"
+                                ></iframe>
+                            </div>
+                        """
+                        
+                        # Add close button above viewer
+                        if st.button("Close Preview", key=f"close_view_{idx}_{hash(name)}"):
+                            del st.session_state.view_states[view_state_key]
+                            st.rerun()
+                        
+                        # Display the PDF viewer
+                        st.markdown(pdf_viewer, unsafe_allow_html=True)
                     else:
                         st.info("Preview not available for this file type")
             
