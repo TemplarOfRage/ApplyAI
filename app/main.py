@@ -126,6 +126,26 @@ def render_resume_section():
             .small-icon {
                 font-size: 0.8rem;
             }
+            /* Smaller uploader text */
+            .uploadedFile {
+                font-size: 0.8rem !important;
+            }
+            .stUploadMessage {
+                font-size: 0.8rem !important;
+            }
+            .css-1q8dd3e {
+                font-size: 0.8rem !important;
+            }
+            .css-9ycgxx {
+                font-size: 0.8rem !important;
+            }
+            /* Hide expander arrow */
+            .streamlit-expanderHeader {
+                border-radius: 0px !important;
+            }
+            .streamlit-expanderContent {
+                border: none !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -159,7 +179,7 @@ def render_resume_section():
             
             # View button (for PDF preview)
             view_key = f"view_{idx}_{hash(name)}"
-            if cols[1].button("👁️", key=view_key, help="View original file", use_container_width=True):
+            if cols[1].button("👁��", key=view_key, help="View original file", use_container_width=True):
                 # Toggle the view state
                 current_state = st.session_state.get(f"show_{view_key}", False)
                 if current_state:
@@ -180,19 +200,25 @@ def render_resume_section():
             
             # Show file preview if requested
             if st.session_state.get(f"show_{view_key}", False):
-                with st.expander("", expanded=True):
+                with st.expander("", expanded=False):
                     file_content = get_resume_file(st.session_state.user_id, name)
-                    if file_content:
-                        st.download_button(
-                            "📄 Open Original File",
-                            file_content,
-                            file_name=name,
-                            mime=file_type,
-                            key=f"download_{idx}_{hash(name)}",
-                            help="Click to open file"
-                        )
+                    if file_content and file_type == "application/pdf":
+                        # Convert bytes to base64 for PDF display
+                        import base64
+                        base64_pdf = base64.b64encode(file_content).decode('utf-8')
+                        # Embed PDF viewer
+                        pdf_display = f"""
+                            <iframe
+                                src="data:application/pdf;base64,{base64_pdf}"
+                                width="100%"
+                                height="600"
+                                type="application/pdf"
+                            >
+                            </iframe>
+                        """
+                        st.markdown(pdf_display, unsafe_allow_html=True)
                     else:
-                        st.info("Original file not available")
+                        st.info("Preview not available for this file type")
             
             # Show editable text content if requested
             if st.session_state.get(f"edit_{view_key}", False):
@@ -227,7 +253,8 @@ def render_resume_section():
     uploaded_file = st.file_uploader(
         "Upload another resume" if resumes else "Upload your first resume",
         type=["pdf", "docx", "txt"],
-        key=f"resume_uploader_{st.session_state.uploader_key}"
+        key=f"resume_uploader_{st.session_state.uploader_key}",
+        label_visibility="collapsed"
     )
     
     if uploaded_file is not None:
