@@ -1,36 +1,49 @@
-import streamlit as st
-import PyPDF2
-import docx2txt
-from typing import Optional, Tuple
-from io import BytesIO
+import pdfplumber
 import docx
 import io
-import pdfplumber
+import streamlit as st
+from PyPDF2 import PdfReader
 
 def extract_text_from_file(uploaded_file):
     """Extract text from various file types"""
     try:
         if uploaded_file.type == "application/pdf":
             try:
-                # Create a BytesIO object from the uploaded file's bytes
-                pdf_bytes = io.BytesIO(uploaded_file.getvalue())
+                # Get PDF bytes
+                pdf_bytes = uploaded_file.getvalue()
+                pdf_stream = io.BytesIO(pdf_bytes)
                 
-                # Extract text using pdfplumber
-                with pdfplumber.open(pdf_bytes) as pdf:
+                # Try pdfplumber first
+                try:
+                    with pdfplumber.open(pdf_stream) as pdf:
+                        text = ""
+                        for page in pdf.pages:
+                            extracted = page.extract_text()
+                            if extracted:
+                                text += extracted + "\n"
+                        
+                        if text.strip():  # If we got valid text
+                            return text
+                except:
+                    # Fallback to PyPDF2 if pdfplumber fails
+                    pdf_stream.seek(0)  # Reset stream position
+                    reader = PdfReader(pdf_stream)
                     text = ""
-                    for page in pdf.pages:
+                    for page in reader.pages:
                         text += page.extract_text() + "\n"
+                    
+                    if not text.strip():  # If still no valid text
+                        raise Exception("Could not extract text from PDF")
+                    
+                    return text
                 
                 # Debug info
                 with st.expander("🔍 Debug Information", expanded=False):
                     st.markdown(f"""
                         <p class='debug-text'>PDF Extraction:</p>
-                        <p class='debug-text'>- Pages processed: {len(pdf.pages)}</p>
                         <p class='debug-text'>- Characters extracted: {len(text)}</p>
-                        <p class='debug-text'>- First 100 chars: {text[:100]}</p>
+                        <p class='debug-text'>- Preview: {text[:200]}</p>
                     """, unsafe_allow_html=True)
-                
-                return text
                 
             except Exception as e:
                 st.error(f"PDF extraction error: {str(e)}")
@@ -40,7 +53,17 @@ def extract_text_from_file(uploaded_file):
             try:
                 # Read DOCX
                 doc = docx.Document(io.BytesIO(uploaded_file.getvalue()))
-                text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                text = "\n".join([paragraph.text for paragraph in doc.paragraphs if paragraph.text.strip()])
+                
+                # Debug info
+                with st.expander("🔍 Debug Information", expanded=False):
+                    st.markdown(f"""
+                        <p class='debug-text'>DOCX Extraction:</p>
+                        <p class='debug-text'>- Paragraphs: {len(doc.paragraphs)}</p>
+                        <p class='debug-text'>- Characters: {len(text)}</p>
+                        <p class='debug-text'>- Preview: {text[:200]}</p>
+                    """, unsafe_allow_html=True)
+                
                 return text
                 
             except Exception as e:
@@ -51,6 +74,15 @@ def extract_text_from_file(uploaded_file):
             try:
                 # Read TXT
                 text = uploaded_file.getvalue().decode('utf-8')
+                
+                # Debug info
+                with st.expander("🔍 Debug Information", expanded=False):
+                    st.markdown(f"""
+                        <p class='debug-text'>TXT Extraction:</p>
+                        <p class='debug-text'>- Characters: {len(text)}</p>
+                        <p class='debug-text'>- Preview: {text[:200]}</p>
+                    """, unsafe_allow_html=True)
+                
                 return text
                 
             except Exception as e:
