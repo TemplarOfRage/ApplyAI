@@ -1,6 +1,5 @@
 import streamlit as st
-from utils.file_processing import extract_text_from_pdf
-from utils.db import save_resume
+from utils import file_processing, db
 
 def render_resume_manager():
     """Component for managing resume uploads and edits"""
@@ -20,12 +19,12 @@ def render_resume_manager():
         for uploaded_file in uploaded_files:
             if uploaded_file.name not in st.session_state.get('processed_files', {}):
                 with st.spinner(f"Processing {uploaded_file.name}..."):
-                    text = extract_text_from_pdf(uploaded_file)
+                    text = file_processing.extract_text_from_pdf(uploaded_file)
                     if text:
                         if 'processed_files' not in st.session_state:
                             st.session_state.processed_files = {}
                         # Auto-save on upload
-                        if save_resume(st.session_state.user_id, uploaded_file.name, text, uploaded_file.type):
+                        if db.save_resume(st.session_state.user_id, uploaded_file.name, text, uploaded_file.type):
                             st.session_state.processed_files[uploaded_file.name] = {
                                 'text': text,
                                 'file_type': uploaded_file.type
@@ -65,7 +64,7 @@ def render_resume_manager():
                     
                     # Auto-save when content changes
                     if edited_text != data['text']:
-                        if save_resume(st.session_state.user_id, filename, edited_text, data['file_type']):
+                        if db.save_resume(st.session_state.user_id, filename, edited_text, data['file_type']):
                             st.session_state.processed_files[filename]['text'] = edited_text
                             st.toast(f"✅ Changes saved to {filename}")
                 
