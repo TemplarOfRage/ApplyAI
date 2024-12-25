@@ -154,23 +154,33 @@ def render_resume_section():
                 border-radius: 4px;
                 margin: 0.5rem 0;
             }
-            /* Text area styling */
+            /* Improved text area styling */
             .stTextArea textarea {
-                font-size: 0.9rem;
-                line-height: 1.5;
-                font-family: monospace;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 0.9rem !important;
+                line-height: 1.4 !important;
+                padding: 0.5rem !important;
+                white-space: pre-wrap !important;
+                overflow-wrap: break-word !important;
             }
-            /* Button container */
-            .button-container {
-                display: flex;
+            /* Button styling */
+            .action-buttons {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
                 gap: 1rem;
                 margin-top: 1rem;
             }
-            .button-container .stButton {
-                flex: 1;
-            }
-            .button-container .stButton button {
+            .action-buttons button {
                 width: 100% !important;
+                padding: 0.5rem !important;
+                font-size: 0.9rem !important;
+            }
+            /* Remove extra margins */
+            .stTextArea div {
+                margin-bottom: 0 !important;
+            }
+            .element-container {
+                margin-bottom: 0.5rem !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -214,35 +224,38 @@ def render_resume_section():
             # Edit button
             edit_key = f"edit_{idx}_{hash(name)}"
             if cols[2].button("✏️", key=edit_key, help="Edit extracted text"):
-                # Only set edit state, don't auto-expand
-                st.session_state[f"edit_{view_key}"] = True
+                # Toggle edit state
+                current_state = st.session_state.get(f"edit_{view_key}", False)
+                st.session_state[f"edit_{view_key}"] = not current_state
             
             # Show edit panel only if explicitly opened
             if st.session_state.get(f"edit_{view_key}", False):
                 st.markdown('<div class="edit-panel">', unsafe_allow_html=True)
+                st.write("Edit extracted text:")
                 edited_content = st.text_area(
-                    "Edit extracted text:",
+                    "",
                     value=content,
-                    height=300,
-                    key=f"content_{idx}_{hash(name)}"
+                    height=400,
+                    key=f"content_{idx}_{hash(name)}",
+                    label_visibility="collapsed"
                 )
                 
-                # Button container for better alignment
-                st.markdown('<div class="button-container">', unsafe_allow_html=True)
+                # Buttons with grid layout
+                st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("Save", key=f"save_{idx}_{hash(name)}", 
-                               type="primary"):
+                    if st.button("Save Changes", key=f"save_{idx}_{hash(name)}", 
+                               type="primary", use_container_width=True):
                         update_resume_content(st.session_state.user_id, name, edited_content)
                         del st.session_state[f"edit_{view_key}"]
                         st.rerun()
                 with col2:
                     if st.button("Cancel", key=f"cancel_{idx}_{hash(name)}", 
-                               type="secondary"):
+                               type="secondary", use_container_width=True):
                         del st.session_state[f"edit_{view_key}"]
                         st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)  # Close button container
-                st.markdown('</div>', unsafe_allow_html=True)  # Close edit panel
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             
             # Delete button
             del_key = f"del_{idx}_{hash(name)}"
