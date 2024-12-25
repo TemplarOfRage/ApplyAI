@@ -53,122 +53,38 @@ def render_job_analysis_section():
     )
 
 def render_resume_section():
-    """Render resume management section"""
-    st.subheader("📄 Resume Management")
+    """Render resume management in sidebar"""
+    # Upload section
+    uploaded_file = st.file_uploader(
+        "Upload Resume",
+        type=["pdf", "docx", "txt"],
+        key="resume_uploader"
+    )
     
-    # Create a container for the resume list
-    resume_list = st.container()
+    st.divider()
     
-    # Create a separate container for resume content
-    content_container = st.container()
-    
-    with resume_list:
-        # Custom CSS for clean layout
-        st.markdown("""
-            <style>
-                /* Container styling */
-                .resume-list {
-                    margin-top: 1rem;
-                }
-                
-                /* Clean layout for resume items */
-                [data-testid="stHorizontalBlock"] {
-                    background: white;
-                    padding: 0.25rem 0.5rem;  /* Reduced padding */
-                    margin: 0.15rem 0;  /* Reduced margin */
-                    border: 1px solid #f0f0f0;
-                    border-radius: 4px;
-                    align-items: center;
-                    min-height: 2rem;  /* Set minimum height */
-                }
-                
-                [data-testid="stHorizontalBlock"]:hover {
-                    background: #f8f9fa;
-                }
-                
-                /* Resume name styling */
-                [data-testid="stHorizontalBlock"] > div:first-child p {
-                    margin: 0;
-                    font-size: 0.85rem;  /* Slightly smaller font */
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    padding-right: 1rem;
-                    line-height: 1.2;  /* Reduced line height */
-                }
-                
-                /* Button styling */
-                [data-testid="stButton"] button {
-                    padding: 0.15rem 0.3rem;  /* Reduced padding */
-                    height: 1.5rem;  /* Fixed height */
-                    min-height: 0;
-                    width: 1.8rem;  /* Slightly narrower */
-                    background: transparent;
-                    border: none;
-                    color: #666;
-                    font-size: 0.9rem;  /* Smaller icons */
-                }
-                
-                [data-testid="stButton"] button:hover {
-                    color: #ff4b4b;
-                    background: #f0f0f0;
-                }
-                
-                /* Hide file uploader elements */
-                .uploadedFile {
-                    display: none !important;
-                }
-                
-                /* Divider styling */
-                hr {
-                    margin: 1.5rem 0;
-                }
-                
-                /* Expander styling */
-                .streamlit-expanderContent {
-                    padding: 0.5rem 0;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        resumes = get_user_resumes(st.session_state.user_id)
-        
-        if not resumes:
-            uploaded_file = st.file_uploader(
-                "Upload your first resume",
-                type=["pdf", "docx", "txt"],
-                key="resume_uploader"
-            )
-        else:
-            for name, content, file_type in resumes:
-                cols = st.columns([8, 1, 1])
-                
-                # Truncate filename if too long
-                display_name = name if len(name) < 40 else name[:37] + "..."
-                
-                # Resume name
-                cols[0].markdown(f"📄 {display_name}")
-                
-                # View button
-                if cols[1].button("👁️", key=f"view_{name}", help="View resume content"):
-                    st.session_state[f"show_{name}"] = True
-                
-                # Delete button
-                if cols[2].button("🗑️", key=f"del_{name}", help="Delete resume"):
-                    if delete_resume(st.session_state.user_id, name):
-                        st.rerun()
+    # Resume list
+    resumes = get_user_resumes(st.session_state.user_id)
+    if resumes:
+        for name, content, file_type in resumes:
+            cols = st.columns([3, 1, 1])
             
-            # Add new resume option
-            st.divider()
-            uploaded_file = st.file_uploader(
-                "Upload another resume",
-                type=["pdf", "docx", "txt"],
-                key="resume_uploader"
-            )
-    
-    # Show resume content in separate container
-    with content_container:
-        for name, content, file_type in resumes or []:
+            # Truncate filename if too long
+            display_name = name if len(name) < 25 else name[:22] + "..."
+            
+            # Resume name
+            cols[0].markdown(f"📄 {display_name}")
+            
+            # View button
+            if cols[1].button("👁️", key=f"view_{name}"):
+                st.session_state[f"show_{name}"] = True
+            
+            # Delete button
+            if cols[2].button("🗑️", key=f"del_{name}"):
+                if delete_resume(st.session_state.user_id, name):
+                    st.rerun()
+            
+            # Show content if requested
             if st.session_state.get(f"show_{name}", False):
                 with st.expander("", expanded=True):
                     st.text_area("", value=content, height=200, 
@@ -188,7 +104,12 @@ def render_resume_section():
                 st.rerun()
         except Exception as e:
             st.error("Failed to process resume. Please try again.")
-            print(f"Error uploading resume: {str(e)}")
+    
+    # Logout button at bottom of sidebar
+    st.sidebar.divider()
+    if st.sidebar.button("🚪 Logout"):
+        del st.session_state.user_id
+        st.rerun()
 
 def render_analysis_history():
     """Render analysis history section"""
@@ -211,28 +132,26 @@ def run():
     if 'user_id' not in st.session_state:
         st.session_state.user_id = str(uuid.uuid4())
     
-    # Initialize configuration
-    init_streamlit_config()
-    
-    # Render sidebar
-    with st.sidebar:
-        render_sidebar()
-    
     st.title("ApplyAI")
     
-    # Create main container for fixed layout
+    # Sidebar for resume management
+    with st.sidebar:
+        st.header("📄 Resume Management")
+        render_resume_section()
+    
+    # Main content area with fixed columns
     main_container = st.container()
     with main_container:
-        # Create two main columns with fixed layout
-        left_col, right_col = st.columns([6, 4], gap="large")
+        col1, col2 = st.columns([2, 1])
         
-        # Render job analysis section in left column
-        with left_col:
+        # Job Analysis section (left column)
+        with col1:
             render_job_analysis_section()
         
-        # Create a separate container for resume section
-        with right_col:
-            render_resume_section()
+        # Analysis History (right column)
+        with col2:
+            st.header("📚 Analysis History")
+            render_analysis_history()
 
 def render_sidebar():
     """Render the configuration sidebar"""
