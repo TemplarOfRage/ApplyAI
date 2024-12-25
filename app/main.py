@@ -186,9 +186,9 @@ def render_resume_section():
                 <thead>
                     <tr>
                         <th style="width: 70%">Name</th>
-                        <th style="width: 10%">Edit</th>
-                        <th style="width: 10%">Download</th>
-                        <th style="width: 10%">Delete</th>
+                        <th style="width: 10%; text-align: center">Edit</th>
+                        <th style="width: 10%; text-align: center">Download</th>
+                        <th style="width: 10%; text-align: center">Delete</th>
                     </tr>
                 </thead>
             </table>
@@ -219,37 +219,10 @@ def render_resume_section():
                     mime=file_type,
                 )
             
-            # Delete confirmation
-            delete_key = f"delete_{idx}_{hash(name)}"
-            
-            # Delete button
+            # Delete button - direct delete
             if cols[3].button("🗑️", key=f"del_btn_{idx}"):
-                st.session_state[delete_key] = True
-            
-            # Show delete confirmation
-            if st.session_state.get(delete_key, False):
-                with st.container():
-                    st.markdown(
-                        f"""
-                        <div class="delete-confirm">
-                            <div>Are you sure you want to delete this file?</div>
-                            <div class="delete-buttons">
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("Cancel", key=f"cancel_{idx}", type="secondary"):
-                            del st.session_state[delete_key]
-                            st.rerun()
-                    with c2:
-                        if st.button("Delete", key=f"confirm_{idx}", type="primary"):
-                            if delete_resume(st.session_state.user_id, name):
-                                if delete_key in st.session_state:
-                                    del st.session_state[delete_key]
-                                st.rerun()
+                if delete_resume(st.session_state.user_id, name):
+                    st.rerun()
             
             # Show edit panel if requested
             if st.session_state.edit_states.get(edit_key, False):
