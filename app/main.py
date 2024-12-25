@@ -63,8 +63,16 @@ def render_job_posting_section():
             help="These questions will be analyzed along with your resume"
         )
 
-    # Just a basic button - nothing else
-    st.button("Analyze", key="basic_analyze_button")
+    # Simple conditions
+    has_job = bool(job_url or job_text)
+    has_resume = bool(st.session_state.get('resumes', []))
+    
+    # Basic button with just enable/disable
+    st.button(
+        "Analyze",
+        disabled=not (has_job and has_resume),
+        key="basic_analyze_button"
+    )
 
 def render_resume_section():
     # Initialize resume list in session state if it doesn't exist
