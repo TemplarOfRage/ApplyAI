@@ -19,21 +19,15 @@ import tempfile
 import os
 
 def render_job_posting_section():
-    st.markdown("""
-        <style>
-        .analyze-button {
-            position: sticky;
-            bottom: 0;
-            padding: 1rem;
-            background: white;
-            border-top: 1px solid #eee;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # Debug info
+    st.write("Debug Info:")
+    st.write(f"Has resumes: {bool(st.session_state.get('resumes', []))}")
+    
     # Job inputs
     job_url = st.text_input("Job Posting URL", placeholder="Paste a job posting URL here (optional)")
     job_text = st.text_area("Or paste job posting text", placeholder="Paste the job description here to analyze it...")
+    
+    st.write(f"Has job content: {bool(job_url or job_text)}")
     
     with st.expander("➕ Add Custom Application Questions (Optional)", expanded=False):
         custom_questions = st.text_area(
@@ -42,25 +36,27 @@ def render_job_posting_section():
             help="These questions will be analyzed along with your resume"
         )
 
-    # ALWAYS create analyze section
-    st.markdown('<div class="analyze-button">', unsafe_allow_html=True)
-    
-    # Simple conditions
-    has_job = bool(job_url or job_text)
-    has_resume = bool(st.session_state.get('resumes', []))
-    
-    # Create button columns
-    col1, col2 = st.columns([1, 4])
-    
-    # THE BUTTON THAT REFUSES TO DISAPPEAR
-    if col1.button(
-        "Analyze",
-        disabled=not (has_job and has_resume),
-        type="primary",
-        use_container_width=True,
-        key="the_button_that_stays"
-    ):
-        if has_job and has_resume:
+    # Force container creation
+    with st.container():
+        # Simple conditions
+        has_job = bool(job_url or job_text)
+        has_resume = bool(st.session_state.get('resumes', []))
+        
+        st.write(f"Button should be enabled: {has_job and has_resume}")
+        
+        # Create button columns
+        col1, col2 = st.columns([1, 4])
+        
+        # Separate button creation from condition checking
+        button_clicked = col1.button(
+            "Analyze",
+            key="analyze_button_debug",
+            use_container_width=True,
+            type="primary"
+        )
+        
+        # Handle button state separately
+        if button_clicked and has_job and has_resume:
             with st.spinner("Analyzing..."):
                 try:
                     resume = st.session_state.resumes[0]
@@ -72,15 +68,13 @@ def render_job_posting_section():
                     st.success("Analysis complete!")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-    
-    # Status message
-    if not has_resume:
-        col2.info("⚠️ Upload a resume to get started")
-    elif not has_job:
-        col2.info("⚠️ Add a job posting to analyze")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
+        
+        # Status message
+        if not has_resume:
+            col2.info("⚠️ Upload a resume to get started")
+        elif not has_job:
+            col2.info("⚠️ Add a job posting to analyze")
+
     # Show results if available
     if 'analysis_results' in st.session_state:
         st.markdown("### Analysis Results")
