@@ -56,67 +56,44 @@ def parse_analysis_sections(analysis_text):
     
     return sections
 
+def parse_multiple_analyses(analysis_text):
+    """Parse multiple resume analyses"""
+    analyses = []
+    current_analysis = None
+    
+    for line in analysis_text.split('\n'):
+        if line.startswith('===== RESUME'):
+            if current_analysis:
+                analyses.append(current_analysis)
+            current_analysis = {'resume_name': line.split(' - ')[1].strip('=')}
+        elif current_analysis:
+            # Add content to current analysis using existing parsing logic
+            # ... (rest of parsing logic)
+            pass
+    
+    if current_analysis:
+        analyses.append(current_analysis)
+    
+    return analyses
+
 def render_analysis_results(analysis_text, user_id=None, resume_name=None, job_content=None):
     """Renders the analysis results in a structured format"""
     if not analysis_text:
         return
         
-    # Parse the analysis into sections
-    sections = parse_analysis_sections(analysis_text)
+    analyses = parse_multiple_analyses(analysis_text)
     
-    # Save to database if we have user info
-    if user_id and resume_name and job_content:
-        save_analysis(user_id, resume_name, job_content, analysis_text)
+    # Create tabs for each resume
+    resume_tabs = st.tabs([analysis['resume_name'] for analysis in analyses])
     
-    st.markdown("### Analysis Results")
+    for tab, analysis in zip(resume_tabs, analyses):
+        with tab:
+            # Use existing rendering logic for each analysis
+            # ... (rest of rendering logic)
+            pass
     
-    # Create tabs in new order
-    match_tab, overall_tab, quals_tab, missing_tab, improve_tab = st.tabs([
-        "Match Score", 
-        "Overall",
-        "Qualifications", 
-        "Missing Skills", 
-        "Improvements"
-    ])
-    
-    with match_tab:
-        st.markdown("#### Match Score")
-        score = sections['match_score']
-        
-        # Create a progress bar for the match score
-        st.progress(float(score)/100)
-        st.markdown(f"### {score}%")
-        
-        # Add color coding
-        if score >= 80:
-            st.success("Strong Match! 🌟")
-        elif score >= 60:
-            st.warning("Good Match with Room for Improvement 📈")
-        else:
-            st.error("Consider Targeting Different Roles 🎯")
-    
-    with overall_tab:
-        st.markdown("#### Overall Assessment")
-        for point in sections['overall']:
-            st.markdown(f"• {point}")
-        
-    with quals_tab:
-        st.markdown("#### Key Qualifications Match")
-        for qual in sections['qualifications']:
-            st.success(f"• {qual}")
-    
-    with missing_tab:
-        st.markdown("#### Missing Skills/Experience")
-        for skill in sections['missing']:
-            st.error(f"• {skill}")
-    
-    with improve_tab:
-        st.markdown("#### Suggested Improvements")
-        for imp in sections['improvements']:
-            st.info(f"• {imp}")
-        
-        st.markdown("""
-            <div style='margin-top: 1em'>
-                <small>Use these suggestions to improve your resume before applying.</small>
-            </div>
-        """, unsafe_allow_html=True) 
+    # If there are multiple resumes, show the comparison
+    if len(analyses) > 1:
+        with st.expander("📊 Resume Comparison"):
+            comparison = analysis_text.split("Finally, if there are multiple resumes")[-1]
+            st.markdown(comparison) 

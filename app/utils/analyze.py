@@ -2,15 +2,29 @@ import streamlit as st
 from anthropic import Anthropic
 from .errors import AnalysisError
 
-def analyze_resume_for_job(resume_content, job_content):
-    """Basic analysis function"""
+def analyze_resume_for_job(resumes, job_content):
+    """Analyze multiple resumes against a job posting"""
     try:
         client = Anthropic(api_key=st.secrets['ANTHROPIC_API_KEY'])
         
+        # Format all resumes for context
+        resume_context = "\n\n".join([
+            f"Resume {idx + 1} - {name}:\n{content}" 
+            for idx, (name, content, _) in enumerate(resumes)
+        ])
+        
         prompt = f"""
-        As an AI career advisor, analyze this resume against the job posting and provide detailed feedback.
-        Please format your response exactly as shown below, using the exact section headers:
+        As an AI career advisor, analyze these resumes against the job posting and provide detailed feedback.
+        For each resume, provide a separate analysis in the format shown below.
 
+        {resume_context}
+
+        JOB POSTING:
+        {job_content}
+
+        For each resume, provide:
+
+        ===== RESUME [Number] - [Name] =====
         Match Score: [0-100]%
 
         Overall Assessment:
@@ -32,12 +46,9 @@ def analyze_resume_for_job(resume_content, job_content):
         • [Improvement 1]
         • [Improvement 2]
         • [Improvement 3]
+        ===============================
 
-        RESUME:
-        {resume_content}
-
-        JOB POSTING:
-        {job_content}
+        Finally, if there are multiple resumes, provide a comparison and recommendation for which resume is best suited for this position.
         """
         
         response = client.messages.create(
@@ -48,9 +59,6 @@ def analyze_resume_for_job(resume_content, job_content):
             }],
             max_tokens=4000
         )
-        
-        # Debug the response
-        st.write("DEBUG - Raw Response:", response.content[0].text)
         
         return response.content[0].text
         

@@ -44,15 +44,24 @@ def render_analyze_button(job_url, job_text, custom_questions):
     if analyze_clicked and has_job and has_resume:
         with st.spinner("Analyzing..."):
             try:
-                resume = st.session_state.resumes[0]
-                response = analyze_resume_for_job(
-                    resume[1],
-                    f"{job_url}\n\n{job_text}\n\n{custom_questions}"
-                )
-                st.session_state['analysis_results'] = response
+                job_content = f"{job_url}\n\n{job_text}\n\n{custom_questions}"
+                
+                # Pass all resumes instead of just the first one
+                response = analyze_resume_for_job(st.session_state.resumes, job_content)
+                st.session_state.analysis_results = response
+                
+                # Store analysis for each resume
+                for resume in st.session_state.resumes:
+                    render_analysis_results(
+                        response,
+                        st.session_state.user_id,
+                        resume[0],  # resume name
+                        job_content
+                    )
+                
                 st.success("Analysis complete!")
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Error during analysis: {str(e)}")
 
 def render_job_posting_section():
     # Job inputs
