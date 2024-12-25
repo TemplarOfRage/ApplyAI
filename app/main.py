@@ -138,63 +138,119 @@ def truncate_filename(filename, max_length=30):
     return name[:max_length-5] + '...' + ext
 
 def render_resume_section():
-    # File uploader with clearer instructions
-    st.markdown("### Upload Resume")
-    st.markdown("Upload your resume to extract and edit its content.")
+    st.markdown("### Resume Management")
     
-    uploaded_file = st.file_uploader(
-        "Upload PDF file",  # Added label for accessibility
+    # File uploader that stays at the top
+    uploaded_files = st.file_uploader(
+        "Upload Resume(s)",
         type=['pdf'],
+        accept_multiple_files=True,
         key='pdf_uploader',
-        help="Currently supporting PDF files only"
+        help="Upload one or more PDF files"
     )
     
-    if uploaded_file:
-        with st.status(f"Processing {uploaded_file.name}...") as status:
-            text = extract_text_from_pdf(uploaded_file)
-            if text:
-                status.update(label="✅ Text extracted successfully!", state="complete")
+    if uploaded_files:
+        # Process all new uploads first
+        for uploaded_file in uploaded_files:
+            if uploaded_file.name not in st.session_state.get('processed_files', {}):
+                with st.spinner(f"Processing {uploaded_file.name}..."):
+                    text = extract_text_from_pdf(uploaded_file)
+                    if text:
+                        if 'processed_files' not in st.session_state:
+                            st.session_state.processed_files = {}
+                        st.session_state.processed_files[uploaded_file.name] = {
+                            'text': text,
+                            'file_type': uploaded_file.type,
+                            'edited': False,
+                            'saved': False
+                        }
+        
+        # Display all processed files in a table format
+        if st.session_state.processed_files:
+            st.markdown("#### Processed Resumes")
+            
+            # Create columns for the table header
+            cols = st.columns([3, 1, 1, 1])
+            cols[0].markdown("**Filename**")
+            cols[1].markdown("**Status**")
+            cols[2].markdown("**Preview**")
+            cols[3].markdown("**Actions**")
+            
+            st.markdown("---")
+            
+            # Display each file's info and controls
+            for filename, data in st.session_state.processed_files.items():
+                cols = st.columns([3, 1, 1, 1])
                 
-                # Two-column layout for actions
-                col1, col2 = st.columns(2)
+                # Filename
+                cols[0].markdown(f"📄 {filename}")
                 
-                with col1:
-                    if st.button("📄 View Content"):
-                        st.code(text[:500] + "..." if len(text) > 500 else text)
+                # Status
+                status = "✅ Saved" if data['saved'] else "📝 Edited" if data['edited'] else "New"
+                cols[1].markdown(status)
                 
-                with col2:
-                    if st.button("💾 Save to Database"):
-                        with st.spinner("Saving..."):
+                # Preview button
+                if cols[2].button("👁️", key=f"preview_{filename}"):
+                    st.session_state[f'show_preview_{filename}'] = True
+                
+                # Edit button
+                if cols[3].button("✏️", key=f"edit_{filename}"):
+                    st.session_state[f'editing_{filename}'] = True
+                
+                # Show preview if requested
+                if st.session_state.get(f'show_preview_{filename}', False):
+                    with st.expander("Preview", expanded=True):
+                        st.text(data['text'][:1000] + "..." if len(data['text']) > 1000 else data['text'])
+                        if st.button("Close Preview", key=f"close_preview_{filename}"):
+                            st.session_state[f'show_preview_{filename}'] = False
+                            st.rerun()
+                
+                # Show editor if requested
+                if st.session_state.get(f'editing_{filename}', False):
+                    with st.expander("Edit Content", expanded=True):
+                        edited_text = st.text_area(
+                            "Edit extracted text",
+                            value=data['text'],
+                            height=400,
+                            key=f"editor_{filename}"
+                        )
+                        
+                        col1, col2 = st.columns([1, 4])
+                        if col1.button("Save", key=f"save_{filename}"):
                             if save_resume(
                                 st.session_state.user_id,
-                                uploaded_file.name,
-                                text,
-                                uploaded_file.type
-                            ):
-                                st.toast("✅ Resume saved successfully!")
-                            else:
-                                st.error("Failed to save resume")
-                
-                # Edit option
-                if st.checkbox("✏️ Edit content"):
-                    edited_text = st.text_area(
-                        "Edit text",
-                        value=text,
-                        height=400
-                    )
-                    if st.button("💾 Save edited version"):
-                        with st.spinner("Saving edited version..."):
-                            if save_resume(
-                                st.session_state.user_id,
-                                uploaded_file.name,
+                                filename,
                                 edited_text,
-                                uploaded_file.type
+                                data['file_type']
                             ):
-                                st.toast("✅ Edited resume saved successfully!")
-                            else:
-                                st.error("Failed to save edited resume")
-            else:
-                status.update(label="❌ Failed to extract text", state="error")
+                                st.session_state.processed_files[filename]['text'] = edited_text
+                                st.session_state.processed_files[filename]['edited'] = True
+                                st.session_state.processed_files[filename]['saved'] = True
+                                st.toast(f"✅ Saved changes to {filename}")
+                                st.session_state[f'editing_{filename}'] = False
+                                st.rerun()
+                        
+                        if col2.button("Cancel", key=f"cancel_{filename}"):
+                            st.session_state[f'editing_{filename}'] = False
+                            st.rerun()
+                
+                st.markdown("---")
+            
+            # Batch actions
+            if not all(f['saved'] for f in st.session_state.processed_files.values()):
+                if st.button("💾 Save All Unsaved"):
+                    with st.spinner("Saving all resumes..."):
+                        for filename, data in st.session_state.processed_files.items():
+                            if not data['saved']:
+                                if save_resume(
+                                    st.session_state.user_id,
+                                    filename,
+                                    data['text'],
+                                    data['file_type']
+                                ):
+                                    st.session_state.processed_files[filename]['saved'] = True
+                        st.toast("✅ All resumes saved!")
+                        st.rerun()
 
 def run():
     """Main entry point for the application"""
