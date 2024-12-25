@@ -211,7 +211,6 @@ def render_resume_section():
                     if st.button("Save Changes", key=f"save_{idx}"):
                         update_resume_content(st.session_state.user_id, name, edited_content)
                         st.session_state.edit_states[edit_key] = False
-                        # Update resumes in session state
                         st.session_state.resumes = get_user_resumes(st.session_state.user_id)
             
             # Download button
@@ -227,7 +226,6 @@ def render_resume_section():
             # Delete button
             if cols[3].button("🗑️", key=f"del_btn_{idx}"):
                 if delete_resume(st.session_state.user_id, name):
-                    # Update resumes in session state
                     st.session_state.resumes = get_user_resumes(st.session_state.user_id)
 
     # File uploader section
